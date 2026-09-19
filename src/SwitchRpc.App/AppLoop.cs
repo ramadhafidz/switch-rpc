@@ -63,70 +63,80 @@ public sealed class AppLoop
 		{
 			while (!_cancelRequested)
 			{
-				var now = stopwatch.Elapsed;
-
-				var (edenRunning, game) = _detector.Poll();
-
-				if (edenRunning != _previousEdenRunning)
+				try
 				{
-					Console.WriteLine(edenRunning ? "Eden: running" : "Eden: not running");
+					var now = stopwatch.Elapsed;
 
-					_previousEdenRunning = edenRunning;
-				}
+					var (edenRunning, game) = _detector.Poll();
 
-				if (game is null)
-				{
-					if (_currentGame is not null)
+					if (edenRunning != _previousEdenRunning)
 					{
-						Console.WriteLine("Game: none");
-						ResetPresence();
+						Console.WriteLine(edenRunning ? "Eden: running" : "Eden: not running");
+
+						_previousEdenRunning = edenRunning;
 					}
 
-					SleepPoll();
-					continue;
-				}
-
-				if (_currentGame is null || game.Id != _currentGame.Id)
-				{
-					Console.WriteLine($"Game detected: {game.DisplayName}");
-
-					_currentGame = game;
-					_currentState = null;
-					_previousPresence = null;
-					_pokedexPages = [];
-					_currentPage = 0;
-					lastSaveRefresh = null;
-					lastRotation = now;
-				}
-
-				if (lastSaveRefresh is null
-					|| now - lastSaveRefresh.Value >= _saveRefreshInterval)
-				{
-					var state = ReadGameState(game);
-
-					if (state is not null)
+					if (game is null)
 					{
-						_currentState = state;
-						_pokedexPages = PresenceFormatter.FormatPokedexPages(state);
+						if (_currentGame is not null)
+						{
+							Console.WriteLine("Game: none");
+							ResetPresence();
+						}
+					}
+					else
+					{
+						if (_currentGame is null || game.Id != _currentGame.Id)
+						{
+							Console.WriteLine($"Game detected: {game.DisplayName}");
 
-						if (_currentPage >= _pokedexPages.Count)
+							_currentGame = game;
+							_currentState = null;
+							_previousPresence = null;
+							_pokedexPages = [];
 							_currentPage = 0;
+							lastSaveRefresh = null;
+							lastRotation = now;
+						}
 
-						Console.WriteLine("Save data refreshed.");
+						if (lastSaveRefresh is null
+							|| now - lastSaveRefresh.Value >= _saveRefreshInterval)
+						{
+							var state = ReadGameState(game);
+
+							if (state is not null)
+							{
+								_currentState = state;
+								_pokedexPages = PresenceFormatter.FormatPokedexPages(state);
+
+								if (_currentPage >= _pokedexPages.Count)
+									_currentPage = 0;
+
+								Console.WriteLine("Save data refreshed.");
+							}
+
+							lastSaveRefresh = now;
+						}
+
+						if (_pokedexPages.Count > 0
+							&& (lastRotation is null
+								|| now - lastRotation.Value >= _dexRotationInterval))
+						{
+							_currentPage = (_currentPage + 1) % _pokedexPages.Count;
+							lastRotation = now;
+						}
+
+						UpdatePresence(_pokedexPages);
 					}
-
-					lastSaveRefresh = now;
 				}
-
-				if (_pokedexPages.Count > 0
-					&& (lastRotation is null
-						|| now - lastRotation.Value >= _dexRotationInterval))
+				catch (Exception error)
 				{
-					_currentPage = (_currentPage + 1) % _pokedexPages.Count;
-					lastRotation = now;
+					// A monitoring loop must survive transient failures from
+					// the emulator, the filesystem, and IPC. Log and keep
+					// polling; programming errors will resurface every tick
+					// instead of being hidden.
+					Console.WriteLine($"Monitoring loop error: {error.Message}");
 				}
-
-				UpdatePresence(_pokedexPages);
 
 				SleepPoll();
 			}
@@ -199,8 +209,6 @@ public sealed class AppLoop
 			if (!_rpc.Connect())
 			{
 				Console.WriteLine("Failed to connect to Discord.");
-
-				SleepPoll();
 				return;
 			}
 		}

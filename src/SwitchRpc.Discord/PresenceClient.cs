@@ -4,9 +4,16 @@ namespace SwitchRpc.Discord;
 
 /// <summary>
 /// Thin wrapper around the DiscordRPC library so no other project touches
-/// Discord types directly. Connection state is tracked through the
-/// client's lifecycle events, so a disconnect that happens mid-run makes
-/// the next update attempt reconnect instead of silently doing nothing.
+/// Discord types directly.
+///
+/// Connection state is tracked through the client's lifecycle events,
+/// which fire on the library's own RPC thread (AutoEvents). SetPresence is
+/// fire-and-forget — it only queues a message — so a dead pipe is noticed
+/// asynchronously through OnClose/OnConnectionFailed rather than by an
+/// update returning false. When that happens, the next Connect() must
+/// Deinitialize first: the library keeps its initialized flag after the
+/// pipe dies and refuses to Initialize again.
+///
 /// The session start timestamp is preserved across reconnections so the
 /// Discord timer stays continuous.
 /// </summary>
@@ -18,7 +25,7 @@ public sealed class PresenceClient : IDisposable
 
 	public PresenceClient(string clientId)
 	{
-		_client = new DiscordRpcClient(clientId);
+		_client = new DiscordRpcClient(clientId, autoEvents: true);
 
 		_client.OnReady += (_, _) => _connected = true;
 		_client.OnClose += (_, _) => _connected = false;
@@ -26,15 +33,20 @@ public sealed class PresenceClient : IDisposable
 		_client.OnError += (_, _) => _connected = false;
 	}
 
-	public bool IsConnected => _connected;
+	public bool IsConnected => _connected && _client.IsInitialized;
 
 	public bool Connect()
 	{
-		if (_connected)
+		if (IsConnected)
 			return true;
 
 		try
 		{
+			// After the pipe died, the library still reports itself as
+			// initialized; deinitialize so Initialize is allowed to run.
+			if (_client.IsInitialized)
+				_client.Deinitialize();
+
 			if (_client.Initialize())
 			{
 				_connected = true;
@@ -63,7 +75,7 @@ public sealed class PresenceClient : IDisposable
 		string largeText
 	)
 	{
-		if (!_connected)
+		if (!IsConnected)
 			return false;
 
 		try
@@ -94,7 +106,7 @@ public sealed class PresenceClient : IDisposable
 
 	public void Clear()
 	{
-		if (!_connected)
+		if (!IsConnected)
 			return;
 
 		try
