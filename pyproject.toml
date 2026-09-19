@@ -27,3 +27,7 @@ known-first-party = [
 	"games",
 	"rpc"
 ]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
