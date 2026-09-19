@@ -60,9 +60,16 @@ dotnet run --project poc/SwitchRpc.Poc --no-build -- --diagnose
 
 ## Live-loop metrics (require Eden + Discord running)
 
-To be recorded by running both implementations side by side:
+Verified live on 2026-09-20 (Eden + Discord running, Scarlet save):
+
+- Presence appears within 1 s of game detection; Pokédex pages rotate
+  every 5 s (Paldea → Kitakami → Blueberry).
+- Save data refreshes on the configured 15 s interval.
+- Presence clears when the game window closes.
+- Ctrl+C exits cleanly and clears presence; no unhandled exceptions.
+
+Still to measure:
 
 - Idle CPU while Eden is closed, and while Eden is running.
-- RPC update latency and update frequency.
-- Clear-on-close behavior.
+- RPC update latency (ms) under state change.
 - Memory over a long session.
