@@ -130,6 +130,17 @@ detection, running-game identification, installation metadata, and
 save locations. Implemented first as `EdenAdapter`, then proven with at
 least one additional emulator before broad expansion.
 
+Known groundwork from the Phase 2 end-state (the host loop currently
+fuses detection → save location → save reading → dex rotation →
+presence):
+
+- The adapter seam is cut in `AppLoop`, which today instantiates
+  `EdenDetector`, `EdenSaveLocator`, and `PokemonSaveReader` directly.
+- `AppLoop` has no tests; making the host loop testable is an
+  explicit Phase 3 goal.
+- `config.json`/`GameDefinition` carries no game → emulator
+  association yet — required before a second emulator can coexist.
+
 ### Phase 4 — Universal Game Architecture ⏳
 
 A generic game definition and registry: identity, title IDs,
@@ -146,6 +157,12 @@ parsed), producing a normalized GameState. The system handles locked
 files, temporary files, invalid saves, partial writes, and unsupported
 versions — read-only, always.
 
+Note: the normalized state is still Pokémon-shaped today —
+`GameState.Pokedex`/`DexStats` and `PresenceFormatter.FormatPokedexPages`
+carry Pokémon concepts inside `SwitchRpc.Core`. Generalizing them
+belongs to this phase and is deliberately kept as-is until then, under
+the no-premature-abstraction principle.
+
 ### Phase 6 — Pokémon + PKHeX Integration ⏳
 
 Make Pokémon support a mature implementation of the universal save
@@ -161,6 +178,10 @@ RPC is no longer Pokémon-specific. Games with a save reader expose rich
 state; games without one still expose game identity, emulator, and
 session information. RPC degrades gracefully and updates only on
 meaningful change.
+
+Today no identity-only presence path exists: a game without a save
+reader currently renders an empty Pokédex state ("Pokédex: —") instead
+of identity/emulator/session information.
 
 ### Phase 8 — Local Save Platform ⏳
 

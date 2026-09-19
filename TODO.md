@@ -82,6 +82,14 @@ Post-migration hardening on `main`, following the Phase 2 .NET merge described i
 - [ ] Centralize artwork and region configurations per game.
 - [ ] Define game-specific capabilities in `GameDefinition`.
 
+### Host & State
+*Extensibility audit findings, recorded in the roadmap (Phases 3, 5, 7).*
+
+- [ ] Cut the emulator adapter seam in `AppLoop` and make the host loop testable (Phase 3).
+- [ ] Associate each game definition with its emulator in `config.json`/`GameDefinition` (Phase 3/4).
+- [ ] Generalize `GameState` beyond the Pokédex shape and move Pokédex formatting out of `SwitchRpc.Core` (Phase 5).
+- [ ] Add an identity-only presence path for games without a save reader (Phase 7).
+
 ### Performance
 - [ ] Optimize the main application loop while Eden is not running.
 - [ ] Avoid unnecessary save reads.
