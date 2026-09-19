@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="DiscordRichPresence" Version="1.6.1.70" />
+    <ProjectReference Include="..\SwitchRpc.Core\SwitchRpc.Core.csproj" />
+    <ProjectReference Include="..\SwitchRpc.Discord\SwitchRpc.Discord.csproj" />
+    <ProjectReference Include="..\SwitchRpc.Emulators.Eden\SwitchRpc.Emulators.Eden.csproj" />
+    <ProjectReference Include="..\SwitchRpc.Games.Pokemon\SwitchRpc.Games.Pokemon.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

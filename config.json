@@ -8,24 +8,28 @@
 		"pokemon_legends_arceus": {
 			"name": "Pokémon Legends: Arceus",
 			"region": "Hisui",
+			"title_id": "01001F5010DFA000",
 			"large_image": "arceus",
 			"large_text": "Pokémon Legends: Arceus"
 		},
 		"pokemon_scarlet": {
 			"name": "Pokémon Scarlet",
 			"region": "Paldea",
+			"title_id": "0100A3D008C5C000",
 			"large_image": "scarlet",
 			"large_text": "Pokémon Scarlet"
 		},
 		"pokemon_violet": {
 			"name": "Pokémon Violet",
 			"region": "Paldea",
+			"title_id": "01008F6008C5E000",
 			"large_image": "violet",
 			"large_text": "Pokémon Violet"
 		},
 		"pokemon_legends_za": {
 			"name": "Pokémon Legends: Z-A",
 			"region": "Kalos",
+			"title_id": "0100F43008C44000",
 			"large_image": "za",
 			"large_text": "Pokémon Legends: Z-A"
 		}

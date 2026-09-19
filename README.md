@@ -19,6 +19,10 @@ the Eden emulator**, with save data parsed through **PKHeX.Core**.
 Support for additional emulators and non-Pokémon games is planned —
 see [docs/ROADMAP.md](docs/ROADMAP.md).
 
+A native **.NET 10 implementation** is being built under `src/` as part
+of the Phase 2 migration; the Python application remains the reference
+baseline until the migration reaches full parity.
+
 ## 📑 Table of Contents
 
 - [✨ Features](#-features)
@@ -106,7 +110,7 @@ definitions, and pluggable save readers — is described in
 
 ``` text
 switch-rpc/
-├── main.py
+├── main.py                        # Python baseline (reference)
 ├── dev.py                         # Developer CLI
 ├── config.json
 ├── pyproject.toml
@@ -117,9 +121,18 @@ switch-rpc/
 ├── LICENSE
 ├── .gitignore
 │
+├── src/                           # .NET 10 implementation (Phase 2)
+│   ├── SwitchRpc.App
+│   ├── SwitchRpc.Core
+│   ├── SwitchRpc.Discord
+│   ├── SwitchRpc.Emulators.Eden
+│   └── SwitchRpc.Games.Pokemon
+│
+├── tests/                         # .NET tests (xUnit)
+│
 ├── assets/
 │
-├── games/
+├── games/                         # Python baseline modules
 │   ├── base.py
 │   ├── registry.py
 │   ├── state.py
@@ -147,6 +160,7 @@ switch-rpc/
 │
 └── docs/
     ├── ARCHITECTURE.md
+    ├── BENCHMARKS.md
     ├── DEVELOPMENT.md
     ├── CONFIGURATION.md
     ├── SAVE-READER.md
@@ -343,6 +357,21 @@ python dev.py all
 
 The CLI preserves subprocess exit codes and runs from the repository root.
 Use `python dev.py --help` to list available commands.
+
+For the .NET implementation under `src/`, use the .NET CLI directly:
+
+``` powershell
+dotnet build SwitchRpc.slnx
+dotnet test SwitchRpc.slnx
+dotnet run --project src/SwitchRpc.App
+```
+
+A `--diagnose` mode runs the whole pipeline once without Eden or Discord
+and prints the pipeline metrics:
+
+``` powershell
+dotnet run --project src/SwitchRpc.App --no-build -- --diagnose
+```
 
 ## 💾 Save Data
 

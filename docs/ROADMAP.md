@@ -65,10 +65,12 @@ Discord RPC) is the Phase 0 baseline described below.
 
 ------------------------------------------------------------------------
 
-## 3. Phase 0 — Python Baseline Stabilization 🔄
+## 3. Phase 0 — Python Baseline Stabilization ✅
 
-Goal: make the current Python implementation stable enough to serve as
-the reference implementation for the project.
+Complete. The Python implementation was stabilized and tagged as
+`v0.1.0-python-baseline`: green validation gates (`python dev.py all`),
+layered documentation, and verified save readers for Legends: Arceus and
+Scarlet.
 
 **Implemented and verified:**
 
@@ -99,25 +101,28 @@ configuration overhaul, and a cleaner logging architecture.
 
 ## 4. Planned Phases
 
-### Phase 1 — .NET 10 Architecture POC ⏳
+### Phase 1 — .NET 10 Architecture POC ✅
 
-Build a minimal .NET 10 implementation on an experimental branch
-(`experiment/dotnet-core`): Eden detection, game detection, save
-reading through PKHeX.Core directly, normalized GameState, and Discord
-RPC. The purpose is to validate whether a .NET-native architecture is
-better suited for the long term — not to rewrite the project yet.
+Complete. The POC validated the architecture on the
+`experiment/dotnet-core` branch: a native pipeline (Eden detection, save
+reading through PKHeX.Core directly, normalized GameState, Discord RPC)
+produced identical results to the Python baseline on the same saves, and
+the benchmark favored the native approach — ~3.4–4.9× faster save
+refresh, lower idle CPU, no subprocess bridge, one runtime instead of
+two. Evidence: `docs/BENCHMARKS.md`.
 
-Benchmark Python against .NET: startup time, idle RAM and CPU, save
-parsing time, game detection time, RPC update time, binary size, and
-overall complexity. Only after evaluating the POC does the project
-commit to migration.
+### Phase 2 — Migrate RPC Core to .NET 10 🔄
 
-### Phase 2 — Migrate RPC Core to .NET 10 ⏳
+In progress on `experiment/dotnet-core`. The POC has been promoted into
+a layered `SwitchRpc.*` solution under `src/` with config-driven game
+definitions, presence reconnection hardening, and a passing xUnit suite.
 
-If Phase 1 validates the architecture, migrate the core RPC
-implementation to .NET 10 and retire the Python → C# subprocess/JSON
-bridge in favor of one native process. Core remains independent from
-Discord, game readers, and emulator adapters.
+Remaining:
+
+- Feature parity review against the Python baseline.
+- Developer tooling integration (`dev.py` awareness of .NET commands).
+- Packaging (single-file executable).
+- Documentation parity and the merge-to-main decision.
 
 ### Phase 3 — Universal Emulator Architecture ⏳
 
