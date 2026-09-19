@@ -6,16 +6,18 @@
     <img src="https://img.shields.io/badge/License-MIT-gray" title="License">
 </p>
 
-# Pokémon Switch RPC
+# SWITCH RPC
 
-> Discord Rich Presence for Pokémon games running through the Eden emulator.
+> Discord Rich Presence for Nintendo Switch games running through emulators.
 
-Pokémon Switch RPC is a modular Discord Rich Presence application that
-detects Pokémon games running through the **Eden Nintendo Switch
-emulator** and reads supported local save data through **PKHeX.Core**.
+SWITCH RPC is a modular Discord Rich Presence platform that detects
+Nintendo Switch games running through emulators and exposes verified,
+read-only game state to Discord.
 
-The application is designed to expose useful, verified game state
-through Discord without modifying save files.
+The first fully implemented target is **Pokémon games running through
+the Eden emulator**, with save data parsed through **PKHeX.Core**.
+Support for additional emulators and non-Pokémon games is planned —
+see [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## 📑 Table of Contents
 
@@ -95,10 +97,15 @@ flowchart TB
 The project intentionally separates game detection, save parsing, common
 state, and Discord presentation.
 
+This flow is the baseline implementation of a broader adapter-based
+architecture. The long-term target — emulator adapters, generic game
+definitions, and pluggable save readers — is described in
+[docs/ROADMAP.md](docs/ROADMAP.md).
+
 ## 📁 Project Structure
 
 ``` text
-pokemon-switch-rpc/
+switch-rpc/
 ├── main.py
 ├── dev.py                         # Developer CLI
 ├── config.json
@@ -200,8 +207,8 @@ Development tooling is configured in `pyproject.toml`.
 ### 1. Clone the repository
 
 ``` powershell
-git clone https://github.com/ramadhafidz/emulator-switch-discordrpc.git pokemon-switch-rpc
-cd pokemon-switch-rpc
+git clone https://github.com/ramadhafidz/switch-rpc.git
+cd switch-rpc
 ```
 
 ### 2. Create a Python virtual environment
@@ -494,23 +501,21 @@ The detailed roadmap is maintained in:
 docs/ROADMAP.md
 ```
 
-Current high-level progression:
+The project evolves through explicit phases:
 
 ``` text
-Foundation                         ✅
-Eden Detection                    ✅
-Architecture                      ✅
-PKHeX Save Bridge                 ✅
-Python Code Quality               ✅
-Documentation Sync                🔄
-Developer CLI                     ✅
-Automated Testing                 ⏳
-Dynamic Rich Presence             ⏳
-Additional Game Support           ⏳
-Packaging / Release               ⏳
+Phase 0   Python Baseline Stabilization    🔄 In progress
+Phase 1   .NET 10 Architecture POC         ⏳ Planned
+Phase 2+  Universal Platform Evolution     ⏳ Planned
 ```
 
-See `docs/ROADMAP.md` for the detailed milestone breakdown.
+Everything described in this README (Eden detection, Pokémon save
+reading, Discord RPC) belongs to the Phase 0 baseline. The .NET
+migration, emulator and game adapters, API, and web clients are
+planned phases, not implemented features.
+
+See `docs/ROADMAP.md` for the full phase breakdown and guiding
+principles.
 
 ## 📚 Documentation
 

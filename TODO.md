@@ -1,9 +1,11 @@
 # TODO
 
-This file tracks granular, actionable tasks for **Pokémon Switch RPC**.
-For the high-level project vision and long-term milestones, see `docs/ROADMAP.md`.
+This file tracks granular, actionable tasks for **SWITCH RPC**.
+For the high-level project vision, phase plan, and long-term milestones, see `docs/ROADMAP.md`.
 
 ## 🏃 Active Sprint
+
+These tasks complete the Phase 0 baseline described in `docs/ROADMAP.md`.
 
 ### Discord RPC
 - [ ] Finalize the Discord RPC UI layout.
@@ -75,6 +77,8 @@ For the high-level project vision and long-term milestones, see `docs/ROADMAP.md
 ## 🏗️ Architecture & Tech Debt
 
 ### Game Registry
+*Groundwork for the universal emulator/game architecture (ROADMAP Phases 3–4).*
+
 - [ ] Move game detection rules into a centralized `GameDefinition` registry.
 - [ ] Centralize artwork and region configurations per game.
 - [ ] Define game-specific capabilities in `GameDefinition`.
