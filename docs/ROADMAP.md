@@ -37,8 +37,9 @@ flowchart TB
 ```
 
 This is the **target** architecture, not the current implementation.
-Today's runtime flow (Eden → detector → PKHeX bridge → GameState →
-Discord RPC) is the Phase 0 baseline described below.
+Today's runtime flow (Eden detection → save location → PKHeX.Core save
+reading → GameState → Discord RPC) is the .NET implementation
+described in Phase 2 below.
 
 ### Core Architectural Principles
 
@@ -86,16 +87,14 @@ Scarlet.
   green validation gate (`python dev.py all`).
 - Documentation suite.
 
-**Remaining:**
+The baseline was retired in Phase 2 in favor of the native .NET
+implementation; its history is preserved under the
+`v0.1.0-python-baseline` tag. Carry-over work (dynamic RPC
+integration, Pokédex accuracy, broader real-save coverage) is tracked
+under the current focus below and in `TODO.md`.
 
-- Dynamic RPC integration (location and richer state) without
-  unnecessary updates.
-- Game-specific Pokédex accuracy: regional, DLC, and total counts.
-- Automated test expansion for the Python–C# integration.
-- Tag the baseline: `v0.1.0-python-baseline`.
-
-**Adjacent (optional) work:** standalone packaging (e.g. PyInstaller),
-configuration overhaul, and a cleaner logging architecture.
+**Adjacent (optional) work:** standalone packaging (single-file
+executable) and a cleaner logging architecture.
 
 ------------------------------------------------------------------------
 
@@ -111,18 +110,18 @@ the benchmark favored the native approach — ~3.4–4.9× faster save
 refresh, lower idle CPU, no subprocess bridge, one runtime instead of
 two. Evidence: `docs/BENCHMARKS.md`.
 
-### Phase 2 — Migrate RPC Core to .NET 10 🔄
+### Phase 2 — Migrate RPC Core to .NET 10 ✅
 
-In progress on `experiment/dotnet-core`. The POC has been promoted into
-a layered `SwitchRpc.*` solution under `src/` with config-driven game
-definitions, presence reconnection hardening, and a passing xUnit suite.
+Complete and merged to `main` (`08d9de6`). The POC was promoted into a
+layered `SwitchRpc.*` solution under `src/` with config-driven game
+definitions, presence reconnection hardening, a passing xUnit suite,
+and live validation on real saves. The Python baseline and the JSON
+bridge were then retired; the repository is now .NET-only and their
+history is preserved under the `v0.1.0-python-baseline` tag.
 
-Remaining:
-
-- Feature parity review against the Python baseline.
-- Developer tooling integration (`dev.py` awareness of .NET commands).
-- Packaging (single-file executable).
-- Documentation parity and the merge-to-main decision.
+Follow-up work tracked in `TODO.md`: CI checks, single-file packaging,
+and broader real-save regression coverage (Violet, Legends: Z-A). An
+optional `v0.2.0-dotnet-core` tag follows live validation on `main`.
 
 ### Phase 3 — Universal Emulator Architecture ⏳
 
@@ -203,16 +202,20 @@ only as an explicit decision.**
 
 ## 5. Current Focus
 
-Near-term work, ahead of Phase 1:
+Near-term work, following the Phase 2 merge:
 
+- Live validation of the .NET application on `main`, then the optional
+  `v0.2.0-dotnet-core` tag.
 - Dynamic RPC integration for the expanded GameState (location, party)
   without unnecessary updates.
 - Game-specific Pokédex accuracy (regional, DLC, totals) verified
   against known saves.
 - Pokémon Violet verification to reach parity with Scarlet.
-- Automated test expansion for the Python–C# integration.
+- Automated test expansion (real-save regression coverage, Eden
+  start/stop behavior).
 - Runtime loop optimization and cleaner logging.
-- Centralizing detection rules and artwork in `GameDefinition`.
+- Extending `GameDefinition` with game-specific capabilities as
+  groundwork for Phases 3–4.
 
 ------------------------------------------------------------------------
 

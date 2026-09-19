@@ -42,6 +42,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Normalized repository line endings to LF through `.gitattributes`, so Ruff format checks behave consistently on Windows checkouts regardless of `core.autocrlf`.
 - Configured Pyright to resolve the project virtual environment explicitly, fixing a false-positive import error for `pypresence` and missing-source warnings for `psutil` and `pywin32`.
 
+### Removed
+
+- Python baseline (`main.py`, `dev.py`, `games/`, `rpc/`, `test/`, `pyproject.toml`, `requirements*.txt`) and the `bridge/PokemonSaveReader` JSON bridge — superseded by the native .NET implementation. Their history is preserved under the `v0.1.0-python-baseline` tag, including verified extractors (trainer, party, boxes, items, progress) not yet ported to the .NET readers.
+
 ### Fixed
 
 - Eden game detection now works from the emulator window title when the process command line does not expose the running game.

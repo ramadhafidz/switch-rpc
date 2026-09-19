@@ -1,6 +1,5 @@
 <p align="center">
     <img src="assets/img/banner.png" alt="Banner"><br />
-    <img src="https://img.shields.io/badge/Python-3.12+-blue?logo=python&logoColor=white" title="Python Version">
     <img src="https://img.shields.io/badge/.NET-10+-purple?logo=dotnet&logoColor=white" title=".NET Version">
     <img src="https://img.shields.io/badge/Status-Active-success" title="Project Status">
     <img src="https://img.shields.io/badge/License-MIT-gray" title="License">
@@ -19,9 +18,9 @@ the Eden emulator**, with save data parsed through **PKHeX.Core**.
 Support for additional emulators and non-Pokémon games is planned —
 see [docs/ROADMAP.md](docs/ROADMAP.md).
 
-A native **.NET 10 implementation** is being built under `src/` as part
-of the Phase 2 migration; the Python application remains the reference
-baseline until the migration reaches full parity.
+A native **.NET 10 implementation** is the primary application, living
+under `src/`; the retired Python baseline remains available in history
+via the `v0.1.0-python-baseline` tag.
 
 ## 📑 Table of Contents
 
@@ -53,8 +52,6 @@ baseline until the migration reaches full parity.
 -   💾 Read Pokémon save data through PKHeX.Core
 -   📖 Read Pokédex progress from supported save files
 -   🕐 Read save playtime
--   👤 Read trainer information
--   🧩 Read party and box Pokémon
 -   📍 Read location data for supported save formats
 -   🔒 Read-only save access --- save files are never modified
 -   ⚙️ JSON-based configuration
@@ -69,7 +66,7 @@ Detection and save-reader support are tracked independently.
 | Pokémon Legends: Arceus | ✅ | ✅ | ✅ | ✅ |
 | Pokémon Scarlet | ✅ | ✅ | ✅ | ✅ |
 | Pokémon Violet | 🚧 | 🚧 | 🚧 | 🚧 |
-| Pokémon Legends: Z-A | 🚧 | 🚧 | 🚧 | 🚧 |        🚧         🚧
+| Pokémon Legends: Z-A | 🚧 | 🚧 | 🚧 | 🚧 |
 
 Current verification means the save reader has been tested against an
 actual supported local save. Detection alone does not mean that a game
@@ -87,21 +84,26 @@ config:
   layout: elk
 ---
 flowchart TB
-    A["Eden Emulator"] --> n1["Game Detector"]
-    n1 --> n2["Game Registry"]
-    n2 --> n3["Save Path Resolver"]
-    n3 --> n4["Python Save Reader"]
-    n4 --> n5["PokemonSaveReader .NET/C#"]
-    n5 --> n6["PKHeX.Core"]
-    n6 --> n7["JSON"]
-    n7 --> n8["GameState"]
-    n8 --> n9["Discord RPC"]
+    A["Eden Emulator"] --> n1["SwitchRpc.Emulators.Eden
+    (process + window detection)"]
+    n1 --> n2["SwitchRpc.App
+    (monitoring loop, config.json)"]
+    n2 --> n3["SwitchRpc.Emulators.Eden
+    (save locator)"]
+    n3 --> n4["SwitchRpc.Games.Pokemon
+    (PokemonSaveReader facade)"]
+    n4 --> n5["PKHeX.Core"]
+    n5 --> n6["SwitchRpc.Core
+    (GameState)"]
+    n6 --> n7["SwitchRpc.Discord
+    (PresenceClient)"]
 ```
 
-The project intentionally separates game detection, save parsing, common
-state, and Discord presentation.
+The solution enforces its boundaries physically: `SwitchRpc.Core` has no
+dependencies, only `SwitchRpc.Games.Pokemon` touches PKHeX, and only
+`SwitchRpc.Discord` touches the Discord library.
 
-This flow is the baseline implementation of a broader adapter-based
+This flow is the first implementation of a broader adapter-based
 architecture. The long-term target — emulator adapters, generic game
 definitions, and pluggable save readers — is described in
 [docs/ROADMAP.md](docs/ROADMAP.md).
@@ -110,53 +112,27 @@ definitions, and pluggable save readers — is described in
 
 ``` text
 switch-rpc/
-├── main.py                        # Python baseline (reference)
-├── dev.py                         # Developer CLI
+├── SwitchRpc.slnx                 # .NET 10 solution
 ├── config.json
-├── pyproject.toml
-├── requirements.txt
-├── requirements-dev.txt
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
 ├── LICENSE
 ├── .gitignore
 │
-├── src/                           # .NET 10 implementation (Phase 2)
-│   ├── SwitchRpc.App
-│   ├── SwitchRpc.Core
-│   ├── SwitchRpc.Discord
-│   ├── SwitchRpc.Emulators.Eden
-│   └── SwitchRpc.Games.Pokemon
+├── src/                           # .NET 10 implementation
+│   ├── SwitchRpc.App              # console host, monitoring loop
+│   ├── SwitchRpc.Core             # GameState, game definitions
+│   ├── SwitchRpc.Discord          # Discord Rich Presence wrapper
+│   ├── SwitchRpc.Emulators.Eden   # Eden detection + save location
+│   └── SwitchRpc.Games.Pokemon    # PKHeX save readers
 │
 ├── tests/                         # .NET tests (xUnit)
+│   └── SwitchRpc.Tests
 │
 ├── assets/
 │
-├── games/                         # Python baseline modules
-│   ├── base.py
-│   ├── registry.py
-│   ├── state.py
-│   ├── state_formatter.py
-│   ├── state_parser.py
-│   ├── detector.py
-│   ├── save_paths.py
-│   ├── save_reader.py
-│   └── game_save_reader.py
-│
-├── rpc/
-│   └── discord_rpc.py
-│
-├── test/
-│   ├── test_dev.py                # Automated pytest tests
-│   ├── game_detection.py
-│   ├── save_path.py
-│   ├── game_save_reader.py
-│   ├── command_line.py
-│   └── windows.py
-│
 ├── bridge/
-│   ├── PKHeX/                     # Local, ignored by Git
-│   └── PokemonSaveReader/
+│   └── PKHeX/                     # Local PKHeX checkout, ignored by Git
 │
 └── docs/
     ├── ARCHITECTURE.md
@@ -176,45 +152,10 @@ switch-rpc/
 ### Software
 
 -   Windows 11
--   Python 3.12+
 -   .NET SDK 10+
 -   Discord desktop application
 -   Eden emulator
 -   A supported Pokémon game
-
-### Runtime Python Dependencies
-
-Defined in `requirements.txt`:
-
-``` text
-pypresence
-psutil
-pywin32
-```
-
-Install with:
-
-``` powershell
-pip install -r requirements.txt
-```
-
-### Development Dependencies
-
-Defined in `requirements-dev.txt`:
-
-``` text
-ruff
-pyright
-pytest
-```
-
-Install with:
-
-``` powershell
-pip install -r requirements-dev.txt
-```
-
-Development tooling is configured in `pyproject.toml`.
 
 ## 🚀 Installation
 
@@ -225,28 +166,7 @@ git clone https://github.com/ramadhafidz/switch-rpc.git
 cd switch-rpc
 ```
 
-### 2. Create a Python virtual environment
-
-``` powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
-
-### 3. Install dependencies
-
-For running the application:
-
-``` powershell
-pip install -r requirements.txt
-```
-
-For development:
-
-``` powershell
-pip install -r requirements-dev.txt
-```
-
-### 4. Set up PKHeX.Core
+### 2. Set up PKHeX.Core
 
 This project uses **PKHeX.Core** as an external dependency for Pokémon
 save parsing.
@@ -258,12 +178,8 @@ Expected local structure:
 ``` text
 switch-rpc/
 └── bridge/
-    ├── PKHeX/
-    │   └── PKHeX.Core/
-    │
-    └── PokemonSaveReader/
-        ├── PokemonSaveReader.csproj
-        └── Program.cs
+    └── PKHeX/
+        └── PKHeX.Core/
 ```
 
 Obtain PKHeX separately and place its source at:
@@ -274,21 +190,13 @@ bridge/PKHeX/
 
 Do not commit `bridge/PKHeX/`.
 
-### 5. Build the save reader bridge
-
-Restore:
+### 3. Build the solution
 
 ``` powershell
-dotnet restore bridge/PokemonSaveReader/PokemonSaveReader.csproj --ignore-failed-sources
+dotnet build SwitchRpc.slnx
 ```
 
-Build:
-
-``` powershell
-dotnet build bridge/PokemonSaveReader/PokemonSaveReader.csproj --no-restore
-```
-
-### 6. Configure Discord
+### 4. Configure Discord
 
 Create a Discord application and obtain its Application ID.
 
@@ -313,7 +221,7 @@ Start Discord first, then launch Eden and a supported Pokémon game.
 Run:
 
 ``` powershell
-python main.py
+dotnet run --project src/SwitchRpc.App
 ```
 
 The application will:
@@ -331,39 +239,11 @@ represented in Discord.
 
 ## 🧪 Development Workflow
 
-The current development quality checks are:
-
-``` powershell
-ruff check --fix .
-ruff format .
-pyright
-pytest
-```
-
-The `dev.py` CLI provides shorter commands:
-
-``` powershell
-python dev.py check
-python dev.py format
-python dev.py lint
-python dev.py typecheck
-python dev.py test
-python dev.py build
-python dev.py run
-python dev.py save
-python dev.py clean
-python dev.py all
-```
-
-The CLI preserves subprocess exit codes and runs from the repository root.
-Use `python dev.py --help` to list available commands.
-
-For the .NET implementation under `src/`, use the .NET CLI directly:
+The development quality checks are:
 
 ``` powershell
 dotnet build SwitchRpc.slnx
 dotnet test SwitchRpc.slnx
-dotnet run --project src/SwitchRpc.App
 ```
 
 A `--diagnose` mode runs the whole pipeline once without Eden or Discord
@@ -394,7 +274,7 @@ or other reliable technical information.
 
 ## 🧩 Save Reader
 
-The C# bridge identifies supported save formats through PKHeX:
+Save readers identify supported save formats through PKHeX:
 
 ``` text
 SaveUtil.GetSaveFile()
@@ -406,32 +286,19 @@ SaveUtil.GetSaveFile()
               └── Pokémon Scarlet / Violet
 ```
 
-The bridge converts save data into a common JSON structure.
+All PKHeX interaction lives inside `SwitchRpc.Games.Pokemon`, behind the
+`PokemonSaveReader` facade; the rest of the application only ever sees
+the normalized `GameState`.
 
-For Scarlet/Violet, the current reader exposes data including:
+For Scarlet/Violet, the current reader exposes:
 
 ``` text
-Game
-Trainer
 Playtime
-Pokédex
-Party
-Boxes
+Pokédex (Paldea, Kitakami, Blueberry)
 Location
 ```
 
-Example location data:
-
-``` json
-{
-    "name": "Artazon",
-    "fieldID": 0,
-    "locationID": 86,
-    "x": 3709.828369140625,
-    "y": 154.77886962890625,
-    "z": -1743.365966796875
-}
-```
+For Legends: Arceus, it exposes playtime and the Hisui Pokédex.
 
 The human-readable location name is resolved using PKHeX's game
 string/location data rather than a project-specific hardcoded location
@@ -475,49 +342,26 @@ Update intervals are configurable in the `discord` section.
 Automated tests are run with:
 
 ``` powershell
-pytest
+dotnet test SwitchRpc.slnx
 ```
 
-Initial pytest coverage is in `test/test_dev.py`, targeting the
-developer CLI.
+The xUnit suite in `tests/SwitchRpc.Tests` covers:
 
-Current manual/integration test scripts:
+- Presence formatting (Pokédex pages).
+- The Scarlet/Violet and Legends: Arceus save readers against blank
+  PKHeX-generated saves.
+- The `PokemonSaveReader` facade (unidentifiable and unsupported files).
+- The Eden save locator with an injected save root.
 
-### Game detection
+Integration testing runs the application itself with Eden and Discord
+(`dotnet run --project src/SwitchRpc.App`) and verifies detection,
+presence rotation, and cleanup on close.
 
-``` powershell
-python test/game_detection.py
-```
-
-### Save path resolution
-
-``` powershell
-python test/save_path.py
-```
-
-### Game save reader
+The `--diagnose` mode exercises the whole save pipeline against real
+local saves without requiring Eden or Discord:
 
 ``` powershell
-python test/game_save_reader.py
-```
-
-### Eden process inspection
-
-``` powershell
-python test/command_line.py
-python test/windows.py
-```
-
-The save reader test currently exercises the local C# bridge and
-supported local saves.
-
-The project is building out pytest-based automated tests alongside
-existing manual integration scripts.
-
-The C# bridge can also be tested directly:
-
-``` powershell
-dotnet run --project bridge/PokemonSaveReader -- "<path-to-save>"
+dotnet run --project src/SwitchRpc.App --no-build -- --diagnose
 ```
 
 Do not commit real save files to the repository.
@@ -533,9 +377,10 @@ docs/ROADMAP.md
 The project evolves through explicit phases:
 
 ``` text
-Phase 0   Python Baseline Stabilization    🔄 In progress
-Phase 1   .NET 10 Architecture POC         ⏳ Planned
-Phase 2+  Universal Platform Evolution     ⏳ Planned
+Phase 0   Python Baseline Stabilization    ✅ Complete
+Phase 1   .NET 10 Architecture POC         ✅ Complete
+Phase 2   Migrate RPC Core to .NET 10      ✅ Complete
+Phase 3+  Universal Platform Evolution     ⏳ Planned
 ```
 
 Everything described in this README (Eden detection, Pokémon save
@@ -586,11 +431,11 @@ GNU General Public License v3.0.
 PKHeX source is not included in this repository and must be obtained
 separately.
 
-### PyPresence
+### DiscordRichPresence
 
 Used for Discord Rich Presence communication.
 
-See the PyPresence project for its license and terms.
+See the DiscordRichPresence project for its license and terms.
 
 ### Eden Emulator
 

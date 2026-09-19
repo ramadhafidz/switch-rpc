@@ -5,7 +5,7 @@ For the high-level project vision, phase plan, and long-term milestones, see `do
 
 ## 🏃 Active Sprint
 
-These tasks complete the Phase 0 baseline described in `docs/ROADMAP.md`.
+Post-migration hardening on `main`, following the Phase 2 .NET merge described in `docs/ROADMAP.md`.
 
 ### Discord RPC
 - [ ] Finalize the Discord RPC UI layout.
@@ -67,7 +67,6 @@ These tasks complete the Phase 0 baseline described in `docs/ROADMAP.md`.
 
 - [ ] Improve save candidate resolution.
 - [ ] Handle locked/inaccessible save files gracefully.
-- [ ] Validate bridge JSON before parsing.
 - [ ] Handle unsupported save formats explicitly.
 - [ ] Add regression fixtures for known save files.
 - [ ] Keep game-specific extraction isolated from shared infrastructure.
@@ -99,26 +98,21 @@ These tasks complete the Phase 0 baseline described in `docs/ROADMAP.md`.
 
 ## 🧪 Testing
 
-- [ ] Add tests for game detection.
-- [ ] Add tests for save path resolution.
-- [ ] Add tests for Python-to-C# JSON parsing.
-- [ ] Add unit tests for GameState edge cases.
-- [ ] Add tests for RPC state-change detection.
-- [ ] Add integration tests for the save-reader bridge.
-- [ ] Add regression tests for PLA saves.
-- [ ] Add regression tests for Scarlet saves.
+- [x] Reader and formatter unit tests (xUnit) for blank PKHeX saves.
+- [x] Save locator tests with an injected root.
+- [x] Facade behavior for unidentifiable and unsupported files.
+- [ ] Add regression tests with more real save files (Violet, Z-A).
 - [ ] Test Eden start/stop behavior.
-- [ ] Test Discord RPC connection failure/recovery.
+- [x] Test Discord RPC connection failure/recovery (manual).
 - [ ] Test unavailable/locked save files.
 
 ---
 
 ## 🛠️ Developer Tooling
 
-- [ ] Keep `dev.py` synchronized with the development workflow.
-- [ ] Ensure `dev.py verify` covers the complete local verification flow.
-- [ ] Add CI checks matching `dev.py all`.
-- [ ] Document the recommended development workflow.
+- [ ] Add CI checks running `dotnet build` and `dotnet test`.
+- [ ] Packaging: single-file executable build.
+- [x] Document the recommended development workflow.
 
 ---
 

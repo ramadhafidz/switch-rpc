@@ -4,7 +4,7 @@
 
 SWITCH RPC uses `config.json` as its primary configuration file.
 
-Configuration is intentionally kept separate from the application logic so that game-specific Rich Presence settings and runtime behavior can be changed without modifying source code. Both implementations consume the same file: the Python baseline application and the .NET implementation under `src/`.
+Configuration is intentionally kept separate from the application logic so that game-specific Rich Presence settings and runtime behavior can be changed without modifying source code. The .NET implementation under `src/` consumes this file.
 
 The current configuration has two main sections:
 
@@ -292,9 +292,7 @@ A configured game is automatically detected through its window title and its sav
 However, complete support may also require changes to:
 
 ```text
-bridge/PokemonSaveReader/Readers/   (Python baseline save reading)
 src/SwitchRpc.Games.Pokemon/        (.NET save reading)
-games/state.py                      (Python baseline state mapping)
 ```
 
 and corresponding tests and documentation.
@@ -397,7 +395,7 @@ Artwork tooltip
 
 Avoid moving application logic into configuration.
 
-For example, configuration should not contain arbitrary Python code or executable commands.
+For example, configuration should not contain arbitrary code or executable commands.
 
 ---
 

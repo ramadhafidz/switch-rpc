@@ -66,9 +66,9 @@ Verified game-specific abstraction
       ↓
 Requested data
       ↓
-JSON
+GameState
       ↓
-Python
+Application
 ```
 
 This gives the project access to existing, maintained knowledge about Pokémon save formats.
@@ -102,7 +102,7 @@ It provides the underlying programmatic functionality used to understand Pokémo
 For this project, the important component is:
 
 ```text
-bridge/PokemonSaveReader/
+src/SwitchRpc.Games.Pokemon/
         ↓
 PKHeX.Core
 ```
@@ -218,7 +218,7 @@ PKHeX expects save files that are accessible in a usable, unencrypted form rathe
 
 The official README states that save data should be imported/exported using an appropriate save-data manager when necessary. citeturn0search0
 
-For this project, Eden already exposes the local save data in a form that our current bridge can pass to PKHeX.Core.
+For this project, Eden already exposes the local save data in a form that our save readers pass to PKHeX.Core.
 
 The project should therefore distinguish:
 
@@ -264,13 +264,13 @@ ZA  → SAV9ZA
 
 and similarly maps older save types to their corresponding `SAV*` classes. citeturn1search1
 
-Our bridge uses:
+Our save readers use:
 
 ```csharp
 SaveFile? save = SaveUtil.GetSaveFile(savePath);
 ```
 
-This means the bridge does not need to manually determine whether a file is PLA, Scarlet, Violet, etc.
+This means the reader does not need to manually determine whether a file is PLA, Scarlet, Violet, etc.
 
 ---
 
@@ -419,7 +419,7 @@ SAV8LA
 
 ## 12. Example: Legends: Arceus
 
-Our current bridge uses:
+Our current readers use:
 
 ```csharp
 SAV8LA
@@ -445,7 +445,7 @@ var seen = save.PokedexSave.GetDexGetCount(
 
 This is preferable to reverse-engineering the raw save again.
 
-The bridge can then normalize the result:
+The reader can then normalize the result:
 
 ```json
 {
@@ -469,7 +469,7 @@ The bridge can then normalize the result:
 
 ## 13. Example: Scarlet / Violet
 
-Our current bridge uses:
+Our current readers use:
 
 ```csharp
 SAV9SV
@@ -492,7 +492,7 @@ var seen = save.Zukan.SeenCount;
 var caught = save.Zukan.CaughtCount;
 ```
 
-This gives the Python application meaningful data without requiring it to understand the underlying save block layout.
+This gives the application meaningful data without requiring it to understand the underlying save block layout.
 
 ---
 
@@ -587,15 +587,13 @@ The intended architecture is:
 ```text
 Eden
   ↓
-Game Detector
+Game Detection
   ↓
 Game Definition
   ↓
-Save Path Resolver
+Save Path Locator
   ↓
-Python Save Reader
-  ↓
-PokemonSaveReader (.NET)
+SwitchRpc.Games.Pokemon (facade)
   ↓
 PKHeX.Core
   ↓
@@ -603,9 +601,7 @@ Game-specific SaveFile
   ↓
 Game-specific data abstraction
   ↓
-JSON
-  ↓
-Python GameState
+GameState
   ↓
 Discord RPC
 ```
@@ -614,59 +610,51 @@ PKHeX is therefore a **data parsing dependency**, not the application itself.
 
 ---
 
-## 18. Why We Use a C# Bridge
+## 18. Why the Application Consumes PKHeX Directly
 
-PKHeX.Core is written in C#.
+PKHeX.Core is written in C#, and the application is .NET 10.
 
-The main application is written in Python.
-
-Instead of rewriting PKHeX functionality in Python, the project uses:
+Because both share the same runtime, the application references PKHeX.Core directly through a project reference — no subprocess, no serialization boundary:
 
 ```text
-Python
+SwitchRpc.App
    ↓
-subprocess
-   ↓
-.NET executable
+SwitchRpc.Games.Pokemon
    ↓
 PKHeX.Core
    ↓
-JSON stdout
-   ↓
-Python
+GameState
 ```
 
-The bridge is:
+The save-reader layer is:
 
 ```text
-bridge/PokemonSaveReader/
+src/SwitchRpc.Games.Pokemon/
 ```
 
 Its responsibility is deliberately narrow.
 
 ---
 
-## 19. Responsibilities of the Bridge
+## 19. Responsibilities of the Save Reader Layer
 
-The C# bridge should:
+The save reader layer should:
 
 1. accept a save path;
 2. load the save through PKHeX.Core;
 3. identify the save type;
 4. read verified data;
-5. normalize the result;
-6. serialize the result to JSON;
-7. write diagnostics to stderr;
-8. exit with an appropriate status code.
+5. normalize the result into `GameState`.
 
-The bridge should **not**:
+The save reader layer should **not**:
 
 - communicate with Discord;
 - detect Eden;
 - implement the main application loop;
 - modify saves;
 - contain UI logic;
-- contain arbitrary game detection logic.
+- contain arbitrary game detection logic;
+- expose PKHeX types to other projects.
 
 ---
 
@@ -767,8 +755,8 @@ Expected local structure:
 
 ```text
 bridge/
-├── PKHeX/
-└── PokemonSaveReader/
+└── PKHeX/
+    └── PKHeX.Core/
 ```
 
 The repository ignores:
@@ -777,7 +765,7 @@ The repository ignores:
 bridge/PKHeX/
 ```
 
-This means a new developer must obtain PKHeX separately before building the bridge.
+This means a new developer must obtain PKHeX separately before building the save readers.
 
 This is an intentional repository/dependency decision.
 

@@ -4,7 +4,7 @@
 
 SWITCH RPC is designed as a modular application with separate responsibilities for emulator detection, game configuration, save-data reading, application state, and Discord Rich Presence.
 
-The main application is written in Python, while Pokémon save parsing is handled by a small C#/.NET bridge that uses PKHeX.Core.
+The application is a native .NET 10 console program. Pokémon save parsing is handled directly through PKHeX.Core — there is no subprocess or serialization boundary between the application and the save parser.
 
 The architecture is intentionally split so that adding support for another Pokémon game does not require rewriting the core application.
 
@@ -20,24 +20,18 @@ config:
   layout: elk
 ---
 flowchart TD
-	A[Eden Emulator] --> B[Game Detector]
-	B --> C[Game Registry]
-	C --> D[Save Path Resolver]
-	D --> E[Python Save Reader]
+	A[Eden Emulator] --> B[EdenDetector]
+	B --> C[config.json Game Definitions]
+	C --> D[EdenSaveLocator]
+	D --> E[PokemonSaveReader Facade]
 
-	E --> F[PokemonSaveReader]
-	F --> G[PKHeX.Core]
+	E --> F[PKHeX.Core]
+	F --> G[Game-Specific Readers]
+	G --> E
 
-	G --> H[Game-Specific Reader]
-	H --> I[Extractors]
-	I --> J[SaveData]
-	J --> K[JSON]
-
-	K --> E
-	E --> L[GameState Parser]
-	L --> M[GameState]
-	M --> N[GameState Formatter]
-	N --> O[Discord RPC]
+	E --> H[GameState]
+	H --> I[PresenceFormatter]
+	I --> J[PresenceClient / Discord RPC]
 ```
 
 ### High-Level Responsibilities
@@ -45,20 +39,20 @@ flowchart TD
 | Component | Responsibility |
 |---|---|
 | Eden | Runs the Pokémon game |
-| Game Detector | Detects Eden and identifies the active Pokémon game |
-| Game Registry | Provides configuration for supported games |
-| Save Path Resolver | Locates the local save file for a game |
-| Save Reader | Invokes the C# bridge and parses its JSON output |
-| PokemonSaveReader | Loads and extracts save data through PKHeX.Core |
+| EdenDetector | Detects Eden and identifies the active game from the window title |
+| Game Definitions | Provide configured game metadata (`config.json`) |
+| EdenSaveLocator | Locates the local save file for a game |
+| PokemonSaveReader | Loads saves through PKHeX.Core and dispatches to game-specific readers |
 | PKHeX.Core | Provides Pokémon save-format implementations |
-| GameState | Represents game data in a common Python structure |
-| Discord RPC | Sends the current state to Discord |
+| GameState | Represents game data in a common, dependency-free structure |
+| PresenceFormatter | Shapes `GameState` into Discord presence strings |
+| PresenceClient | Sends the current state to Discord |
 
 ---
 
-## .NET Solution Architecture (Phase 2 — in progress)
+## Solution Structure
 
-The migration to a native .NET 10 application is underway on the `experiment/dotnet-core` branch. The implementation lives in five projects under `src/`, with physical dependency rules that enforce the architectural boundaries described in this document.
+The solution file is `SwitchRpc.slnx` (the .NET 10 solution format). All application code lives under `src/`, tests under `tests/`.
 
 | Project | Responsibility | References |
 |---|---|---|
@@ -89,11 +83,11 @@ flowchart TB
 Rules enforced by the project split:
 
 - `SwitchRpc.Core` references nothing — PKHeX, Discord, and Eden types cannot leak into the normalized state.
-- Only `SwitchRpc.Games.Pokemon` touches PKHeX, through the same verified extraction logic as the bridge.
+- Only `SwitchRpc.Games.Pokemon` touches PKHeX.Core, through the `PokemonSaveReader` facade.
 - Only `SwitchRpc.Discord` touches the Discord library.
-- Game definitions come from `config.json` at runtime; display names and artwork are configuration, not code.
+- Game definitions come from `config.json` at runtime; display names, regions, title IDs, and artwork are configuration, not code.
 
-Tests live in `tests/SwitchRpc.Tests` (xUnit); run them with `dotnet test SwitchRpc.slnx`. Benchmark evidence for the migration decision is recorded in `docs/BENCHMARKS.md`.
+Tests live in `tests/SwitchRpc.Tests` (xUnit); run them with `dotnet test SwitchRpc.slnx`. Benchmark evidence for the migration from the retired Python baseline is recorded in `docs/BENCHMARKS.md`.
 
 ---
 
@@ -138,7 +132,7 @@ flowchart TD
 	P --> E
 ```
 
-The monitoring interval is configurable through `config.json`.
+The monitoring interval is configurable through `config.json`. The loop catches per-tick exceptions and keeps polling; programming errors resurface every tick instead of being hidden.
 
 ---
 
@@ -146,13 +140,13 @@ The monitoring interval is configurable through `config.json`.
 
 Eden is detected by its Windows process.
 
-The current detector looks for:
+The detector looks for:
 
 ```text
 eden.exe
 ```
 
-Once the process is found, the detector enumerates its visible windows and checks the window title to identify the running Pokémon game.
+Once the process is found, the detector enumerates its visible windows and checks the window title against the display names configured in `config.json`.
 
 Example Eden window title:
 
@@ -160,9 +154,7 @@ Example Eden window title:
 Eden | v0.2.1 | Clang 22.1.4 | Pokémon Scarlet (64-bit) | 3.0.1 | Nvidia
 ```
 
-The detector maps known game names to internal game IDs.
-
-For example:
+The detector reports the configured game ID, for example:
 
 ```text
 Pokémon Legends: Arceus → pokemon_legends_arceus
@@ -171,12 +163,14 @@ Pokémon Violet          → pokemon_violet
 Pokémon Legends: Z-A    → pokemon_legends_za
 ```
 
+`EdenDetector.Poll` performs a single process scan per tick and logs state transitions (Eden started/stopped, game changed).
+
 ### Responsibility
 
 The detector should only answer questions related to:
 
 - Is Eden running?
-- What Pokémon game is currently running?
+- What game is currently running?
 
 It should not:
 
@@ -187,9 +181,9 @@ It should not:
 
 ---
 
-## 2. Game Registry
+## 2. Game Definitions
 
-The `GameRegistry` loads game definitions from `config.json`.
+Game definitions are loaded from `config.json` into `GameDefinition` records at runtime.
 
 Each game definition contains information such as:
 
@@ -197,6 +191,7 @@ Each game definition contains information such as:
 Game ID
 Display name
 Region
+Title ID
 Discord artwork
 Artwork tooltip
 ```
@@ -208,19 +203,20 @@ Example:
 	"pokemon_scarlet": {
 		"name": "Pokémon Scarlet",
 		"region": "Paldea",
+		"title_id": "0100A3D008C00000",
 		"large_image": "scarlet",
 		"large_text": "Pokémon Scarlet"
 	}
 }
 ```
 
-The registry allows the rest of the application to work with a common `GameDefinition` instead of hardcoding display information throughout the application.
+Definitions allow the rest of the application to work with a common `GameDefinition` instead of hardcoding display information throughout the code.
 
 ### Responsibility
 
-The registry should:
+The configuration layer should:
 
-- Load game configuration.
+- Load game definitions.
 - Provide a game definition by ID.
 - Provide the list of configured games.
 
@@ -232,11 +228,11 @@ It should not:
 
 ---
 
-## 3. Save Path Resolver
+## 3. Save Path Resolution
 
-The `EdenSavePathResolver` determines where the save file for a detected game is stored.
+The `EdenSaveLocator` determines where the save file for a detected game is stored.
 
-The resolver currently uses Eden's local save directory and known game title IDs.
+The locator maps the game's configured title ID onto Eden's local save directory.
 
 Conceptually:
 
@@ -248,12 +244,12 @@ config:
   layout: elk
 ---
 flowchart LR
-    A["Game ID"] --> B["Title ID"]
+    A["Game ID"] --> B["Title ID (config.json)"]
     B --> C["Eden Save Directory"]
     C --> n1["main"]
 ```
 
-The resolver is responsible only for locating the save file.
+The locator is responsible only for locating the save file.
 
 It should not parse the contents of the save.
 
@@ -263,40 +259,23 @@ Do not hardcode user-specific paths.
 
 Use dynamic paths such as:
 
-```python
-Path.home()
+```csharp
+Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
 ```
 
 and configuration or known identifiers where appropriate.
 
 ---
 
-## 4. Save Reader
+## 4. Save Reader Facade
 
-The Python `SaveReader` acts as the interface between the Python application and the C# bridge.
+`PokemonSaveReader` (in `SwitchRpc.Games.Pokemon`) is the single entry point for save reading.
 
 Its responsibilities are:
 
-1. Validate that the save exists.
-2. Execute the C# save reader.
-3. Pass the save path to the bridge.
-4. Capture stdout and stderr.
-5. Parse successful JSON output.
-6. Handle bridge failures and invalid output.
-
-The Python layer should not manually parse Pokémon save binary structures when PKHeX.Core already provides the required functionality.
-
----
-
-## 5. Python → C# Bridge
-
-The bridge is located at:
-
-```text
-bridge/PokemonSaveReader/
-```
-
-The Python application invokes the .NET executable and passes the save path as an argument.
+1. Load the save through PKHeX's own detection (`SaveUtil.GetSaveFile`).
+2. Select the matching `ISaveStateReader` for the identified save type.
+3. Return a normalized `SaveReadResult` — either a `GameState`, or an explicit unsupported/unidentifiable result.
 
 ```mermaid
 ---
@@ -306,39 +285,32 @@ config:
   layout: elk
 ---
 flowchart LR
-	A[Python SaveReader] -->|save path| B[PokemonSaveReader]
-	B --> C[SaveUtil.GetSaveFile]
-	C --> D{Save Type}
+	A[PokemonSaveReader] --> B[SaveUtil.GetSaveFile]
+	B --> C{Save Type}
 
-	D -->|SAV8LA| E[LegendsArceusReader]
-	D -->|SAV9SV| F[ScarletVioletReader]
+	C -->|SAV8LA| D[PlaSaveReader]
+	C -->|SAV9SV| E[SvSaveReader]
 
-	E --> G[Extractors]
-	F --> G
-
-	G --> H[SaveData]
-	H --> I[JSON]
-	I --> A
+	D --> F[GameState]
+	E --> F
 ```
 
-The bridge is intentionally kept small.
+Unsupported formats are reported through `SaveReadResult` (`Supported = false`, with the identified save type name) so the host can degrade to identity-only presence instead of failing.
 
-It should not contain:
+The facade should not:
 
-- Discord RPC logic.
-- Eden detection.
-- Python-specific application state.
-- UI logic.
-
-Its purpose is to provide a reliable boundary around PKHeX.Core.
+- Modify the input save.
+- Leak PKHeX types to callers.
+- Contain Discord RPC logic.
+- Depend on the application host.
 
 ---
 
-## 6. PKHeX.Core
+## 5. PKHeX.Core
 
-PKHeX.Core provides the save-format implementations used by the bridge.
+PKHeX.Core provides the save-format implementations used by the readers. It is consumed as a local source checkout under `bridge/PKHeX/` (untracked) through a `ProjectReference`.
 
-The current bridge supports:
+Currently supported save types:
 
 ```text
 SAV8LA
@@ -348,7 +320,7 @@ SAV9SV
 └── Pokémon Scarlet / Violet
 ```
 
-The bridge uses PKHeX save detection rather than manually identifying save formats from file size or guessed binary structures.
+The readers use PKHeX save detection rather than manually identifying save formats from file size or guessed binary structures.
 
 For example:
 
@@ -358,22 +330,24 @@ SaveFile? save = SaveUtil.GetSaveFile(savePath);
 
 The resulting save type is then handled by the appropriate reader.
 
+See [PKHeX.md](PKHeX.md) for the checkout layout, identification quirks, and API verification rules.
+
 ---
 
-## 7. Game-Specific Save Reading
+## 6. Game-Specific Save Reading
 
 Different Pokémon games use different save structures.
 
-The bridge dispatches supported save types to game-specific reading logic.
+Each supported save type has its own `ISaveStateReader` implementation (`CanRead` + `Read`) inside `SwitchRpc.Games.Pokemon`.
 
 Conceptually:
 
 ```text
 SaveFile
    │
-   ├── SAV8LA ──► ReadArceus()
+   ├── SAV8LA ──► PlaSaveReader
    │
-   └── SAV9SV ──► ReadScarletViolet()
+   └── SAV9SV ──► SvSaveReader
 ```
 
 This keeps game-specific knowledge isolated.
@@ -395,57 +369,20 @@ If a save structure cannot be verified, leave the feature unimplemented rather t
 
 ---
 
-## 8. JSON Data Boundary
+## 7. GameState
 
-The C# bridge returns structured JSON to Python.
-
-Example:
-
-```json
-{
-	"success": true,
-	"game": {
-		"version": "SL",
-		"generation": 9,
-		"type": "scarlet_violet"
-	},
-	"trainer": {
-		"name": "Trainer",
-		"id": 123456789
-	},
-	"playtime": {
-		"hours": 10,
-		"minutes": 51,
-		"seconds": 28
-	},
-	"pokedex": {
-		"seen": 41,
-		"caught": 25,
-		"total": 1025
-	}
-}
-```
-
-JSON acts as the boundary between the C# save parser and the Python application.
-
-This prevents PKHeX-specific objects from leaking into the rest of the Python application.
-
----
-
-## 9. GameState
-
-`GameState` provides a common representation of information used by the Python application.
+`GameState` (in `SwitchRpc.Core`) provides a common representation of information used by the presentation layer.
 
 Current structure:
 
-```python
-@dataclass
-class GameState:
-	game_id: str
-	playtime_seconds: int | None = None
-	pokedex_caught: int | None = None
-	pokedex_total: int | None = None
-	location: str | None = None
+```csharp
+public sealed record GameState(
+	string GameId,
+	long? PlaytimeSeconds,
+	string? LocationName,
+	int? LocationId,
+	IReadOnlyDictionary<string, DexStats> Pokedex
+);
 ```
 
 The purpose of `GameState` is to decouple the rest of the application from individual save formats.
@@ -460,36 +397,32 @@ config:
   layout: elk
 ---
 flowchart LR
-	A[Game-Specific Save Data]
-	B[JSON Boundary]
-	C[GameState]
-	D[Discord Presentation]
-
-	A --> B --> C --> D
+	A[Game-Specific Save Data] --> B[GameState]
+	B --> C[Discord Presentation]
 ```
 
-The Discord layer should consume application state rather than PKHeX objects.
+The Discord layer should consume application state rather than PKHeX objects. PKHeX types never cross the `GameState` boundary.
 
 ---
 
-## 10. Discord RPC
+## 8. Discord RPC
 
 Discord Rich Presence is handled by:
 
 ```text
-rpc/discord_rpc.py
+src/SwitchRpc.Discord/PresenceClient.cs
 ```
 
-The `DiscordRPC` class wraps PyPresence and manages:
+The `PresenceClient` class wraps the DiscordRichPresence library and manages:
 
 - Connecting to Discord.
+- Tracking connection state through the client lifecycle events (`OnReady`, `OnClose`, `OnConnectionFailed`, `OnError`).
 - Updating the Rich Presence.
 - Clearing the Rich Presence.
-- Closing the RPC connection.
-- Handling connection failures.
-- Reconnecting when necessary.
+- Disposing and reinitializing the client (the library keeps its initialized flag after the pipe dies, so reconnection calls `Deinitialize()` before `Initialize()` again).
+- Preserving the session timer across reconnections.
 
-The rest of the application should interact with this wrapper rather than directly calling PyPresence.
+The rest of the application should interact with this wrapper rather than directly calling the Discord library.
 
 ### RPC Lifecycle
 
@@ -515,88 +448,42 @@ stateDiagram-v2
 
 ## Component Responsibilities
 
-### `main.py`
+### `src/SwitchRpc.App/`
 
-Coordinates the application.
+Console host and monitoring loop.
 
-Responsible for:
+- `Program.cs` — entry point, component wiring, shutdown.
+- `AppLoop.cs` — the monitoring loop: poll Eden, detect game changes, refresh saves, update Discord.
+- `ConfigLocator.cs` — locates and loads `config.json`.
+- `Diagnose.cs` — `--diagnose` mode: runs the pipeline once and prints metrics.
 
-- Loading configuration.
-- Creating application components.
-- Monitoring Eden.
-- Detecting game changes.
-- Reading game data.
-- Building state.
-- Updating Discord.
-- Cleaning up on exit.
+### `src/SwitchRpc.Core/`
 
-`main.py` should coordinate components rather than implement their internal behavior.
+Dependency-free normalized state.
 
----
+- `GameDefinition.cs` — configured game metadata.
+- `GameState.cs` — the normalized state record and `DexStats`.
+- `PresenceFormatter.cs` — shapes `GameState` into presence strings.
 
-### `games/detector.py`
+### `src/SwitchRpc.Emulators.Eden/`
 
-Responsible for Eden process and game detection.
+- `EdenDetector.cs` — Eden process/window detection and game identification.
+- `EdenSaveLocator.cs` — title ID → save path resolution.
 
-Does not parse saves or communicate with Discord.
+### `src/SwitchRpc.Games.Pokemon/`
 
----
+- `PokemonSaveReader.cs` — the facade over all Pokémon save reading.
+- `ISaveStateReader.cs` — the reader contract (`CanRead` + `Read`).
+- `SvSaveReader.cs` — Scarlet/Violet (SAV9SV).
+- `PlaSaveReader.cs` — Legends: Arceus (SAV8LA).
 
-### `games/base.py`
+### `src/SwitchRpc.Discord/`
 
-Defines shared game configuration structures such as `GameDefinition`.
+- `PresenceClient.cs` — Discord Rich Presence communication and reconnection.
 
----
+### `tests/SwitchRpc.Tests/`
 
-### `games/registry.py`
-
-Loads and provides game definitions.
-
----
-
-### `games/state.py`
-
-Defines the common `GameState` structure.
-
----
-
-### `games/save_paths.py`
-
-Resolves the local save location for a game.
-
----
-
-### `games/save_reader.py`
-
-Runs the C# bridge and converts its JSON output into Python data.
-
----
-
-### `games/game_save_reader.py`
-
-Coordinates:
-
-```text
-Game ID
-   ↓
-Save Path Resolver
-   ↓
-Save Reader
-```
-
-This provides a higher-level interface for reading a game's save data.
-
----
-
-### `rpc/discord_rpc.py`
-
-Encapsulates Discord Rich Presence communication.
-
----
-
-### `bridge/PokemonSaveReader/`
-
-Contains the C# executable responsible for interacting with PKHeX.Core.
+xUnit tests covering the core state, presence formatting, save readers, and the Eden save locator.
 
 ---
 
@@ -609,23 +496,19 @@ A typical save-data update follows this flow:
 config:
   theme: dark
   look: handDrawn
+  layout: elk
 ---
 flowchart TD
-	A["Eden Emulator"] -->|game detection| B["Game Detector"]
+	A["Eden Emulator"] -->|window title| B["EdenDetector"]
 
-	B -->|game_id| C["Game Registry"]
-	C -->|GameDefinition| D["Save Path Resolver"]
+	B -->|game_id| C["config.json / GameDefinition"]
+	C -->|title_id| D["EdenSaveLocator"]
 
-	D -->|save path| E["Python Save Reader"]
+	D -->|save path| E["PokemonSaveReader"]
+	E --> F["PKHeX.Core"]
 
-	E -->|process call| F["NintendoSaveReader (.NET / C#)"]
-	F --> G["PKHeX.Core"]
-
-	G -->|extracted save data| H["JSON"]
-	H --> E
-
-	E --> I["GameState"]
-	I --> J["Discord RPC"]
+	F -->|GameState| G["PresenceFormatter"]
+	G --> H["PresenceClient / Discord RPC"]
 ```
 
 ---
@@ -688,17 +571,17 @@ Application continues monitoring
 ```text
 Unsupported save
       ↓
-Bridge returns failure
+Reader reports Supported = false
       ↓
-Application continues monitoring
+Application degrades to identity-only presence
 ```
 
 ```text
 Discord disconnected
       ↓
-RPC wrapper detects failure
+PresenceClient detects failure
       ↓
-Reconnect on a future update
+Reinitialize and reconnect on a future update
 ```
 
 The application should not terminate merely because an external dependency temporarily fails.
@@ -737,7 +620,7 @@ External failures should not unnecessarily terminate the monitoring application.
 
 ### Minimal Dependencies
 
-Prefer existing dependencies and the standard library before introducing additional packages.
+Prefer existing dependencies and the base class library before introducing additional packages.
 
 ---
 
@@ -763,7 +646,7 @@ flowchart TB
 
 Always verify documentation against the actual dependency version used by the project.
 
-For PKHeX specifically, the local PKHeX source corresponding to the version being built is authoritative for the actual API available to the bridge.
+For PKHeX specifically, the local PKHeX source corresponding to the version being built is authoritative for the actual API available to the readers.
 
 Never rely solely on model memory for version-sensitive APIs.
 

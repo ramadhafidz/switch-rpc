@@ -26,7 +26,7 @@ If you have found a bug, you can report it using the GitHub issues. Before repor
 2. Verify if the bug has not been previously reported by someone else (search the existing issues).
 
 If the bug has not been resolved, create a new issue. In the description, please include:
-- Operating system and Python / .NET versions.
+- Operating system and .NET SDK version.
 - Eden version and Pokémon game (with update version).
 - Relevant application logs (from the console).
 - Steps to reproduce the issue.
@@ -49,12 +49,12 @@ Once you have a relatively clear plan of action, you can contribute code.
 
 Before you open your PR (pull request) make sure that:
 - Your PR solves a single issue. If you want to do more than one thing, split it into multiple PRs.
-- Your code is functional and passes local checks (`ruff check`, `pyright`, `pytest`).
+- Your code is functional and passes local checks (`dotnet build`, `dotnet test`).
 - You have followed the **Save Reader Rules** (see below).
 - The messages from your commits are clear (we prefer Conventional Commits, e.g., `feat(save-reader): add Scarlet save support`).
 
 **Pull Request Checklist:**
-- [ ] Python dependencies are installed and code passes Ruff/Pyright.
+- [ ] The project builds and `dotnet test` passes.
 - [ ] Save-reader changes were tested against a compatible save when possible.
 - [ ] No save files or personal data were committed.
 - [ ] No guessed save offsets were introduced.
@@ -70,22 +70,12 @@ Before you open your PR (pull request) make sure that:
 The project currently uses:
 
 - Windows
-- Python 3.9 or newer
-- Python virtual environment
 - .NET 10 SDK
 - Git
 - Eden emulator
 - Discord desktop application for Rich Presence testing
 
-The Python application uses:
-
-```text
-pypresence
-psutil
-pywin32
-```
-
-The save-reading bridge uses C# and references `PKHeX.Core`.
+The application references `PKHeX.Core` for Pokémon save parsing.
 
 ### Clone the Repository
 
@@ -94,17 +84,10 @@ git clone <repository-url>
 cd switch-rpc
 ```
 
-### Create the Python Environment
+### Build the Solution
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
-
-Install dependencies:
-
-```powershell
-pip install -r requirements.txt
+dotnet build SwitchRpc.slnx
 ```
 
 ### PKHeX Setup
@@ -113,23 +96,16 @@ PKHeX is used as the save-format implementation layer through `PKHeX.Core`.
 
 The PKHeX source is intentionally kept outside the public repository. See [docs/PKHeX.md](docs/PKHeX.md) for the architecture, supported formats, and setup details.
 
-The local bridge project is located at:
+The local PKHeX checkout is located at:
 
 ```text
-bridge/PokemonSaveReader/
+bridge/PKHeX/
 ```
 
-It references the local PKHeX Core project:
+It is referenced by `SwitchRpc.Games.Pokemon` through a ProjectReference:
 
 ```text
 bridge/PKHeX/PKHeX.Core/PKHeX.Core.csproj
-```
-
-Restore/build the bridge with:
-
-```powershell
-dotnet restore bridge/PokemonSaveReader/PokemonSaveReader.csproj --ignore-failed-sources
-dotnet build bridge/PokemonSaveReader/PokemonSaveReader.csproj --no-restore
 ```
 
 Do not commit the local `bridge/PKHeX/` source tree.
@@ -138,124 +114,83 @@ Do not commit the local `bridge/PKHeX/` source tree.
 
 ```text
 switch-rpc/
-├── main.py
+├── SwitchRpc.slnx
 ├── config.json
-├── requirements.txt
 ├── .gitignore
-├── rpc/
-│   ├── discord_rpc.py
-│   └── __init__.py
-├── games/
-│   ├── base.py
-│   ├── detector.py
-│   ├── game_save_reader.py
-│   ├── registry.py
-│   ├── save_paths.py
-│   ├── save_reader.py
-│   ├── state.py
-│   └── __init__.py
-├── test/
+├── src/
+│   ├── SwitchRpc.App/            # console host, monitoring loop
+│   ├── SwitchRpc.Core/           # normalized state, game definitions
+│   ├── SwitchRpc.Discord/        # Discord Rich Presence wrapper
+│   ├── SwitchRpc.Emulators.Eden/ # Eden detection + save location
+│   └── SwitchRpc.Games.Pokemon/  # PKHeX save readers
+├── tests/
+│   └── SwitchRpc.Tests/          # xUnit tests
 ├── bridge/
-│   ├── PokemonSaveReader/
-│   └── PKHeX/              # Local only, ignored by Git
+│   └── PKHeX/                    # Local only, ignored by Git
 └── docs/
 ```
 
 The main responsibilities are:
 
-- `main.py` — application loop and orchestration.
-- `games/detector.py` — detects Eden and identifies the running game.
-- `games/registry.py` — provides configured game definitions.
-- `games/state.py` — represents normalized game state.
-- `games/save_paths.py` — resolves emulator save locations.
-- `games/save_reader.py` — invokes the C# save-reading bridge.
-- `games/game_save_reader.py` — combines save-path resolution and save reading.
-- `rpc/discord_rpc.py` — Discord Rich Presence integration.
-- `bridge/PokemonSaveReader/` — C# bridge between Python and PKHeX.Core.
+- `SwitchRpc.App` — application loop, configuration, and orchestration.
+- `SwitchRpc.Core` — normalized `GameState`, game definitions, presence formatting.
+- `SwitchRpc.Games.Pokemon` — PKHeX-based save readers behind a facade.
+- `SwitchRpc.Emulators.Eden` — Eden process/window detection and save location.
+- `SwitchRpc.Discord` — Discord Rich Presence integration.
 - `docs/` — project architecture and development documentation.
 
 ## Code Style
 
-### Python
-
-Use clear, small, focused modules and functions.
-
-Follow the existing indentation style:
-
-- **2 tabs for indentation**
-- Keep imports organized.
-- Use type hints where they improve clarity.
-- Prefer explicit names over abbreviations.
-- Avoid unnecessary abstractions.
-- Handle expected runtime failures without crashing the main application.
-
-Example:
-
-```python
-class Example:
-	def run(self) -> bool:
-		return True
-```
-
 ### C#
 
-Follow the existing PKHeX bridge style:
+Use clear, small, focused types and methods.
 
-- Use standard C# formatting.
-- Keep the bridge small.
-- Keep Pokémon/game-format logic in PKHeX where possible.
-- Do not duplicate PKHeX's format implementation in Python.
-- Return stable JSON structures to the Python application.
-- Keep the bridge read-only.
+Follow the existing style:
 
-## Architecture Guidelines
+- **Tabs for indentation**
+- PascalCase for types and members, camelCase for locals.
+- Records for immutable data.
+- Prefer explicit names over abbreviations.
+- Avoid unnecessary abstractions.
+- Handle expected runtime failures without crashing the application.
+
+### Architecture Guidelines
 
 The project follows this general flow:
 
 ```text
 Eden
   ↓
-Game Detector
+SwitchRpc.Emulators.Eden (detection + save location)
   ↓
-Game Definition / Registry
+SwitchRpc.Games.Pokemon (PKHeX save readers)
   ↓
-Save Resolver
+SwitchRpc.Core (GameState)
   ↓
-Save Reader
-  ↓
-PokemonSaveReader (.NET/C#)
-  ↓
-PKHeX.Core
-  ↓
-JSON
-  ↓
-GameState
-  ↓
-Discord RPC
+SwitchRpc.Discord (RPC)
 ```
 
 When adding functionality:
 
-1. Determine which layer owns the responsibility.
-2. Keep game-specific behavior in the game/save layer.
-3. Keep Discord-specific behavior in the RPC layer.
-4. Keep the application loop focused on orchestration.
-5. Avoid coupling unrelated modules together.
+1. Determine which project owns the responsibility.
+2. Keep game-specific behavior in `SwitchRpc.Games.Pokemon`.
+3. Keep Discord-specific behavior in `SwitchRpc.Discord`.
+4. Keep `SwitchRpc.Core` free of external dependencies.
+5. Keep the application loop focused on orchestration.
 
 ## Adding a New Game
 
 When adding support for a new Pokémon game:
 
-1. Add the game definition to `config.json`.
-2. Add game-title detection in `games/detector.py` if necessary.
-3. Add the game's title ID to `games/save_paths.py` when verified.
-4. Verify that PKHeX supports the corresponding save format.
-5. Add or extend the C# bridge only when required.
-6. Map the save data into the normalized `GameState`.
-7. Add tests using a valid save file when possible.
-8. Update [docs/GAME-SUPPORT.md](docs/GAME-SUPPORT.md).
-9. Update [docs/SAVE-READER.md](docs/SAVE-READER.md) if save-reading behavior changes.
-10. Update the relevant roadmap or documentation when appropriate.
+1. Add the game definition to `config.json` (with `title_id`).
+2. Verify that the Eden window title matches the configured display name.
+3. Verify that PKHeX supports the corresponding save format.
+4. Add a save reader in `SwitchRpc.Games.Pokemon` when the format is verified.
+5. Map the save data into the normalized `GameState`.
+6. Add tests using a valid save file when possible.
+7. Update [docs/GAME-SUPPORT.md](docs/GAME-SUPPORT.md).
+8. Update [docs/SAVE-READER.md](docs/SAVE-READER.md) if save-reading behavior changes.
+9. Update the relevant roadmap or documentation when appropriate.
 
 Do not add guessed save offsets.
 
@@ -322,9 +257,11 @@ Useful areas to test include:
 - Save-path resolution.
 - Save-format detection.
 - Save parsing.
-- JSON output.
 - Game state normalization.
+- Presence formatting.
 - Discord RPC behavior.
+
+Run the suite with `dotnet test SwitchRpc.slnx`.
 
 Do not commit real personal save files.
 
@@ -332,7 +269,7 @@ For local testing, keep emulator save data outside Git-tracked paths or use the 
 
 ## Discord RPC
 
-Discord Rich Presence should remain isolated in `rpc/discord_rpc.py`.
+Discord Rich Presence should remain isolated in `src/SwitchRpc.Discord`.
 
 When changing RPC behavior:
 
@@ -346,7 +283,7 @@ If a change affects user-visible Rich Presence fields, update [docs/DISCORD-RPC.
 
 ## Configuration
 
-User-specific configuration should not be hardcoded into Python modules.
+User-specific configuration should not be hardcoded into source code.
 
 Use `config.json` for project configuration such as:
 
@@ -418,7 +355,7 @@ For save-reader changes, include enough technical information for another develo
 Before submitting:
 
 - [ ] The project builds successfully.
-- [ ] Python dependencies are installed correctly.
+- [ ] The project builds and `dotnet test` passes.
 - [ ] Relevant tests pass.
 - [ ] Save-reader changes were tested against a compatible save when possible.
 - [ ] No save files or personal data were committed.
@@ -434,8 +371,7 @@ Before submitting:
 When reporting a bug, include:
 
 - Operating system.
-- Python version.
-- .NET version when relevant.
+- .NET SDK version.
 - Eden version.
 - Pokémon game and version/update.
 - Relevant application logs.

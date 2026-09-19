@@ -4,7 +4,7 @@
 
 The Save Reader subsystem is responsible for locating supported Pokémon save files and extracting game data from them.
 
-SWITCH RPC does not parse Pokémon save files directly in Python. Instead, the project uses a small C#/.NET bridge that relies on **PKHeX.Core** for save-format handling.
+SWITCH RPC reads Pokémon save files directly through **PKHeX.Core** inside `SwitchRpc.Games.Pokemon`. There is no subprocess or JSON boundary — the save data flows in memory into the normalized `GameState`.
 
 The overall flow is:
 
@@ -12,27 +12,23 @@ The overall flow is:
 Eden Save Directory
         │
         ▼
-EdenSavePathResolver
+EdenSaveLocator (SwitchRpc.Emulators.Eden)
         │
         │ save path
         ▼
-Python SaveReader
-        │
-        │ subprocess
-        ▼
-PokemonSaveReader
+PokemonSaveReader facade (SwitchRpc.Games.Pokemon)
         │
         ▼
 PKHeX.Core
         │
         ▼
-Game-specific save implementation
+Game-specific save reader
         │
         ▼
-JSON
+GameState (SwitchRpc.Core)
         │
         ▼
-Python application
+Discord RPC / other consumers
 ```
 
 The save reader is designed to be:
@@ -52,7 +48,7 @@ The Save Reader subsystem should:
 1. Locate the correct save file for the detected game.
 2. Load the save through a verified save implementation.
 3. Extract useful game information.
-4. Return structured data to Python.
+4. Return a normalized `GameState`.
 5. Fail gracefully when the save cannot be read.
 6. Avoid modifying the original save file.
 
@@ -65,87 +61,47 @@ The subsystem should **not** modify save data or act as a save editor.
 The current save-reading system consists of:
 
 ```text
-games/
-├── save_paths.py
-├── save_reader.py
-└── game_save_reader.py
-
-bridge/
-└── PokemonSaveReader/
-    ├── PokemonSaveReader.csproj
-    └── Program.cs
+src/
+├── SwitchRpc.Emulators.Eden/
+│   └── EdenSaveLocator.cs
+└── SwitchRpc.Games.Pokemon/
+    ├── ISaveStateReader.cs
+    ├── PokemonSaveReader.cs
+    ├── SvSaveReader.cs
+    └── PlaSaveReader.cs
 ```
 
-### `games/save_paths.py`
-
-Contains `EdenSavePathResolver`.
+### `EdenSaveLocator`
 
 Responsible for:
 
 - Finding Eden's save root.
-- Mapping internal game IDs to known title IDs.
-- Locating the game's save directory.
+- Locating the game's save directory through its configured title ID.
 - Resolving the `main` save file.
 
 It does not parse save contents.
 
----
+### `ISaveStateReader`
 
-### `games/save_reader.py`
+The contract implemented by every game-specific reader:
 
-Contains `SaveReader`.
-
-Responsible for:
-
-- Receiving a save path.
-- Executing the .NET bridge.
-- Passing the save path to the bridge.
-- Capturing stdout and stderr.
-- Handling process failures.
-- Parsing JSON output.
-
-It does not know the internal structure of Pokémon save formats.
-
----
-
-### `games/game_save_reader.py`
-
-Contains `GameSaveReader`.
-
-This class coordinates the path resolver and generic save reader:
-
-```text
-Game ID
-   │
-   ▼
-EdenSavePathResolver
-   │
-   ▼
-Save Path
-   │
-   ▼
-SaveReader
-   │
-   ▼
-Save Data
+```csharp
+bool CanRead(SaveFile save);
+GameState Read(SaveFile save, string gameId);
 ```
 
-This provides the Python application with a simple game-oriented interface.
+### `PokemonSaveReader`
 
----
-
-### `bridge/PokemonSaveReader/`
-
-The C# bridge is responsible for interacting with PKHeX.Core.
+The facade over the game-specific readers.
 
 It:
 
 1. Receives a save file path.
-2. Checks that the file exists.
-3. Uses PKHeX to identify the save format.
-4. Dispatches to the appropriate game-specific reader.
-5. Extracts verified data.
-6. Serializes the result as JSON.
+2. Uses PKHeX to identify the save format.
+3. Dispatches to the appropriate game-specific reader.
+4. Returns a normalized `SaveReadResult` — a `GameState`, the identified save type name, and whether the format is supported.
+
+Callers never touch PKHeX types directly; only this project does.
 
 ---
 
@@ -153,10 +109,10 @@ It:
 
 Eden stores game save data under its local user save directory.
 
-The Python resolver uses:
+The locator uses:
 
-```python
-Path.home()
+```csharp
+Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
 ```
 
 as the basis for locating the Windows user profile.
@@ -164,10 +120,10 @@ as the basis for locating the Windows user profile.
 The current save root is:
 
 ```text
-%USERPROFILE%\AppData\Roaming\eden\nand\user\save\0000000000000000\
+%USERPROFILE%\AppData\Roaming\eden\nand\user\save\
 ```
 
-The resolver then searches for the known game title ID.
+The locator then searches for the configured game title ID.
 
 Conceptually:
 
@@ -189,21 +145,19 @@ Do not hardcode a user-specific path such as:
 C:\Users\<username>\...
 ```
 
-Use `Path.home()` or another configurable mechanism.
+Use `Environment.GetFolderPath` or another configurable mechanism.
 
 ---
 
 ## Game Title IDs
 
-The resolver currently contains known title IDs for supported save formats.
-
-Current entries include:
+Title IDs are configured per game in `config.json`:
 
 ```text
 pokemon_legends_arceus → 01001F5010DFA000
 pokemon_scarlet        → 0100A3D008C5C000
-pokemon_violet         → not implemented
-pokemon_legends_za     → not implemented
+pokemon_violet         → 01008F6008C5E000
+pokemon_legends_za     → 0100F43008C44000
 ```
 
 A title ID should only be added after it has been verified.
@@ -214,16 +168,15 @@ Do not guess a title ID from another release, region, or game.
 
 ## Save File Selection
 
-For supported games, the resolver looks for:
+For supported games, the locator looks for:
 
 ```text
 <title-id>/main
 ```
 
-The resolver returns `None` when:
+The locator returns `null` when:
 
-- The game ID is unknown.
-- No title ID is configured.
+- The save root does not exist.
 - The game directory cannot be found.
 - `main` does not exist.
 
@@ -233,9 +186,9 @@ This allows the application to continue monitoring instead of crashing.
 
 ## PKHeX Integration
 
-PKHeX.Core provides the save-format implementations used by the bridge.
+PKHeX.Core provides the save-format implementations used by the readers.
 
-The bridge uses PKHeX's save detection:
+The facade uses PKHeX's save detection:
 
 ```csharp
 SaveFile? save = SaveUtil.GetSaveFile(savePath);
@@ -253,9 +206,18 @@ SAV9SV
 └── Pokémon Scarlet / Violet
 ```
 
-The bridge should prefer existing PKHeX abstractions over manual binary parsing.
+The readers should prefer existing PKHeX abstractions over manual binary parsing.
 
-For example, if PKHeX exposes a property for playtime, Pokédex data, trainer information, or another field, use that API instead of manually calculating an offset.
+For example, if PKHeX exposes a property for playtime, Pokédex data, or another field, use that API instead of manually calculating an offset.
+
+### Known Identification Quirk
+
+`SaveUtil.GetSaveFile` identifies real save files partly through on-disk size fingerprints (the gen9 size ranges accept "tons of optional blocks"). A blank in-memory save (`new SAV9SV()`, `new SAV8LA()`) therefore cannot round-trip through `GetSaveFile` when written to disk.
+
+Consequences:
+
+- Reader tests use in-memory `SaveFile` objects directly.
+- File-based identification is covered by garbage-file tests and real-save integration runs (`--diagnose`).
 
 ---
 
@@ -263,47 +225,28 @@ For example, if PKHeX exposes a property for playtime, Pokédex data, trainer in
 
 ### Pokémon Legends: Arceus
 
-The current bridge extracts:
+The current reader extracts:
 
 ```text
-Game version
-Generation
-Trainer name
-Trainer ID
 Playtime
-Pokédex seen count
-Pokédex total
+Hisui Pokédex (seen counted as caught, mirroring the verified bridge implementation)
 ```
 
-The PLA Pokédex is read through PKHeX's `PokedexSave8a` implementation.
-
-The current implementation uses the Hisui Pokédex:
+The PLA Pokédex is read through PKHeX's `PokedexSave8a` implementation:
 
 ```csharp
-save.PokedexSave.GetDexGetCount(PokedexType8a.Hisui)
-```
-
-and:
-
-```csharp
+save.Blocks.PokedexSave.GetDexGetCount(PokedexType8a.Hisui)
 PokedexSave8a.GetDexTotalCount(PokedexType8a.Hisui)
 ```
 
----
-
 ### Pokémon Scarlet / Violet
 
-The current bridge extracts:
+The current reader extracts:
 
 ```text
-Game version
-Generation
-Trainer name
-Trainer ID
 Playtime
-Pokédex seen count
-Pokédex caught count
-Pokédex total
+Location (location ID, human-readable name)
+Pokédex per dex group (Paldea, Kitakami, Blueberry): seen / caught / total
 ```
 
 The SV Pokédex is accessed through:
@@ -312,130 +255,38 @@ The SV Pokédex is accessed through:
 save.Zukan
 ```
 
-The current implementation uses:
+with per-group seen/caught checks through:
 
 ```csharp
-save.Zukan.SeenCount
-save.Zukan.CaughtCount
+save.Zukan.DexPaldea.GetSeen(species)
+save.Zukan.DexPaldea.GetCaught(species)
 ```
 
-The exact definition of the total count should remain aligned with the actual PKHeX implementation rather than being treated as a universal Pokédex size.
+Dex group membership comes from the personal table entries:
 
----
-
-## JSON Boundary
-
-The C# bridge communicates with Python using JSON over stdout.
-
-A successful response has the general shape:
-
-```json
-{
-	"success": true,
-	"game": {
-		"version": "SL",
-		"generation": 9,
-		"type": "scarlet_violet"
-	},
-	"trainer": {
-		"name": "Trainer",
-		"id": 123456789
-	},
-	"playtime": {
-		"hours": 10,
-		"minutes": 51,
-		"seconds": 28
-	},
-	"pokedex": {
-		"seen": 41,
-		"caught": 25,
-		"total": 1025
-	}
-}
+```csharp
+save.Personal.GetFormEntry(species, form)
 ```
 
-The exact fields can evolve as more save data is supported.
+(`DexPaldea`, `DexKitakami`, `DexBlueberry`).
 
-### stdout
+Current totals: Paldea 400, Kitakami 200, Blueberry 243.
 
-Successful JSON output should be written to stdout.
+The location is read from the save block storage:
 
-Do not print debugging messages to stdout during a successful machine-readable response.
-
-### stderr
-
-Errors and diagnostic messages should be written to stderr when appropriate.
-
-This keeps stdout safe for JSON parsing.
-
----
-
-## Python Save Reader
-
-The Python `SaveReader` invokes the bridge as a subprocess.
-
-Conceptually:
-
-```text
-SaveReader
-    │
-    │ dotnet PokemonSaveReader <save>
-    ▼
-PokemonSaveReader
-    │
-    ▼
-JSON stdout
-    │
-    ▼
-json.loads()
-    │
-    ▼
-Python dict
+```csharp
+save.Blocks.TryGetBlock(key, out var block)
 ```
 
-The reader handles:
-
-- Missing save files.
-- Missing bridge executable/project.
-- Process startup failures.
-- Timeouts.
-- Non-zero exit codes.
-- Empty output.
-- Invalid JSON.
-
-A save-reader failure should not terminate the entire monitoring application.
-
----
-
-## C# Bridge Execution
-
-The bridge can be tested directly with:
-
-```powershell
-dotnet run --project bridge/PokemonSaveReader -- "<path-to-save>"
-```
-
-After building, the resulting application can also be executed directly.
-
-Example:
-
-```powershell
-dotnet build bridge/PokemonSaveReader/PokemonSaveReader.csproj
-```
-
-The bridge accepts exactly one argument:
-
-```text
-PokemonSaveReader.exe <save-file>
-```
-
-If the argument is missing or the file does not exist, the bridge should return a non-zero exit code.
+and the human-readable location name is resolved through PKHeX's game
+string/location data rather than a project-specific hardcoded location
+dictionary.
 
 ---
 
 ## Save Type Detection
 
-The bridge currently uses:
+The facade uses:
 
 ```csharp
 SaveUtil.GetSaveFile(savePath)
@@ -456,11 +307,15 @@ The detected `SaveFile` type determines which reader is used:
 SaveFile
    │
    ├── SAV8LA
-   │     └── ReadArceus()
+   │     └── PlaSaveReader
    │
    └── SAV9SV
-         └── ReadScarletViolet()
+         └── SvSaveReader
 ```
+
+Save types without a reader produce a `SaveReadResult` with
+`Supported = false`, and the application degrades to identity-only
+presence.
 
 ---
 
@@ -474,7 +329,7 @@ It may:
 - Read save blocks.
 - Extract values.
 - Parse Pokémon structures.
-- Return JSON data.
+- Return normalized state.
 
 It must not:
 
@@ -499,7 +354,7 @@ Before implementing a new field:
 
 ### 1. Inspect the Local PKHeX Source
 
-The local PKHeX source is especially important because it represents the exact PKHeX version being referenced by the bridge.
+The local PKHeX source is especially important because it represents the exact PKHeX version being referenced by the project.
 
 Look for:
 
@@ -509,26 +364,11 @@ Look for:
 - Properties exposing the required value.
 - Existing helper methods.
 
-### 2. Use Context7
-
-When relevant documentation is available through Context7, use it to check current APIs and documentation for the dependency being used.
-
-Context7 should be particularly useful for:
-
-- .NET APIs.
-- C# APIs.
-- Python dependencies.
-- PyPresence.
-- Discord RPC.
-- Other external libraries.
-
-Always consider the actual dependency version.
-
-### 3. Check Official Sources
+### 2. Check Official Sources
 
 Use official documentation or official source repositories when additional verification is required.
 
-### 4. Verify Before Implementing
+### 3. Verify Before Implementing
 
 Only implement a field when its structure or API can be verified.
 
@@ -553,52 +393,33 @@ Determine the correct PKHeX save class or verified save implementation.
 
 ### Step 2 — Add Save Resolution
 
-Add the game's title ID or another verified save-location mechanism to `save_paths.py`.
+Add the game's `title_id` to `config.json`.
 
-### Step 3 — Add the C# Reader
+### Step 3 — Add the Reader
 
-Add a game-specific branch to the bridge.
-
-For example:
-
-```csharp
-return save switch
-{
-	SAV8LA pla => ReadArceus(pla, savePath),
-	SAV9SV sv => ReadScarletViolet(sv, savePath),
-	_ => throw new InvalidOperationException(
-		$"Unsupported save type: {save.GetType().Name}"
-	)
-};
-```
+Implement `ISaveStateReader` in `SwitchRpc.Games.Pokemon` and register it in the `PokemonSaveReader` facade.
 
 ### Step 4 — Extract Verified Fields
 
 Start with a small set of reliable fields:
 
 ```text
-Trainer
 Playtime
 Pokédex
 Location
-Party
 ```
 
 Only add fields when their source is verified.
 
-### Step 5 — Define JSON Output
+### Step 5 — Map to GameState
 
-Add the fields to the JSON response without exposing PKHeX-specific objects.
+Convert the relevant data into the normalized `GameState`.
 
-### Step 6 — Map to GameState
+### Step 6 — Test
 
-Convert the relevant data into the common Python state model.
+Add xUnit tests (in-memory `SaveFile` objects work for reader tests), then verify with a real save through `--diagnose`.
 
-### Step 7 — Test
-
-Test the reader directly with a valid save.
-
-### Step 8 — Document
+### Step 7 — Document
 
 Update:
 
@@ -611,41 +432,23 @@ Update:
 
 ## Testing
 
-The save reader can be tested at multiple levels.
+The save reader is tested at multiple levels.
 
-### Save Path
-
-```powershell
-python test/save_path.py
-```
-
-This verifies that the configured game can resolve its local save path.
-
-### Full Python Save Reader
+### Unit tests (xUnit)
 
 ```powershell
-python test/game_save_reader.py
+dotnet test SwitchRpc.slnx
 ```
 
-This verifies:
+Covers the presence formatter, the game readers against blank PKHeX saves (in memory), the facade behavior for unidentifiable and unsupported files, and the save locator.
 
-```text
-Game ID
-   ↓
-Save Path
-   ↓
-C# Bridge
-   ↓
-JSON
-```
-
-### C# Bridge
+### Diagnose (real saves)
 
 ```powershell
-dotnet run --project bridge/PokemonSaveReader -- "<path-to-save>"
+dotnet run --project src/SwitchRpc.App --no-build -- --diagnose
 ```
 
-This isolates PKHeX and C# behavior from the Python application.
+This exercises the full pipeline — save location, PKHeX identification, and parsing — against real local saves and prints the timings.
 
 ---
 
@@ -656,7 +459,7 @@ This isolates PKHeX and C# behavior from the Python application.
 Check:
 
 1. Eden has created the save directory.
-2. The expected title ID is correct.
+2. The configured `title_id` is correct.
 3. The game directory exists.
 4. The `main` file exists.
 5. The current user profile is being resolved correctly.
@@ -668,9 +471,9 @@ Check:
 1. The save is a supported format.
 2. The save file is not corrupted.
 3. The local PKHeX version supports the format.
-4. The bridge references the intended PKHeX.Core project.
+4. `SwitchRpc.Games.Pokemon` references the intended PKHeX.Core project.
 
-### Bridge Fails to Build
+### Build Fails
 
 Check:
 
@@ -681,16 +484,10 @@ dotnet --info
 and:
 
 ```powershell
-dotnet build bridge/PokemonSaveReader/PokemonSaveReader.csproj
+dotnet build SwitchRpc.slnx
 ```
 
 If NuGet source configuration causes a restore failure, inspect the configured package sources and use `--ignore-failed-sources` only when appropriate.
-
-### Invalid JSON
-
-Check that the C# bridge does not write diagnostic output to stdout.
-
-Debugging output should go to stderr.
 
 ---
 
@@ -705,7 +502,7 @@ The application should not:
 - Store unnecessary copies of save data.
 - Log complete save contents.
 
-Only the extracted information required by the application should be passed to the Python layer.
+Only the extracted information required by the application should be used.
 
 ---
 
@@ -727,9 +524,9 @@ Game-specific save implementations remain isolated.
 
 Save processing happens locally.
 
-### Minimal
+### Normalized
 
-Only the required data should cross the C# → Python boundary.
+PKHeX types stop at the `SwitchRpc.Games.Pokemon` boundary; consumers see `GameState`.
 
 ### Maintainable
 
@@ -737,7 +534,7 @@ Prefer stable PKHeX abstractions over custom binary parsing.
 
 ### Fail Gracefully
 
-An unreadable save should not crash the main monitoring application.
+An unreadable save should not crash the monitoring application.
 
 ---
 

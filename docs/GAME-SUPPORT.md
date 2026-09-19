@@ -436,8 +436,8 @@ Test:
 - Save path resolution.
 - Save format detection.
 - Save data extraction.
-- JSON output.
-- Python integration.
+- output.
+- GameState integration.
 
 ### 10. Update Documentation
 
@@ -461,7 +461,7 @@ At minimum, verify:
 [ ] Save path
 [ ] Save format
 [ ] Save reader
-[ ] JSON output
+[ ] GameState mapping
 [ ] GameState mapping
 [ ] Discord integration
 [ ] Tests
