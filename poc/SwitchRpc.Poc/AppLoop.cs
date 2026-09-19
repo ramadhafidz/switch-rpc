@@ -57,8 +57,8 @@ public sealed class AppLoop
 		else
 			Console.WriteLine("Discord not available yet; will retry on update.");
 
-		var lastSaveRefresh = TimeSpan.MinValue;
-		var lastRotation = TimeSpan.MinValue;
+		TimeSpan? lastSaveRefresh = null;
+		TimeSpan? lastRotation = null;
 		var stopwatch = Stopwatch.StartNew();
 
 		try
@@ -90,11 +90,12 @@ public sealed class AppLoop
 					_previousPresence = null;
 					_pokedexPages = [];
 					_currentPage = 0;
-					lastSaveRefresh = TimeSpan.MinValue;
+					lastSaveRefresh = null;
 					lastRotation = now;
 				}
 
-				if (now - lastSaveRefresh >= _saveRefreshInterval)
+				if (lastSaveRefresh is null
+					|| now - lastSaveRefresh.Value >= _saveRefreshInterval)
 				{
 					var state = ReadGameState(game);
 
@@ -112,7 +113,9 @@ public sealed class AppLoop
 					lastSaveRefresh = now;
 				}
 
-				if (_pokedexPages.Count > 0 && now - lastRotation >= _dexRotationInterval)
+				if (_pokedexPages.Count > 0
+					&& (lastRotation is null
+						|| now - lastRotation.Value >= _dexRotationInterval))
 				{
 					_currentPage = (_currentPage + 1) % _pokedexPages.Count;
 					lastRotation = now;
