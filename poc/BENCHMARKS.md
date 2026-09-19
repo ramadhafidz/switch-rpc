@@ -76,20 +76,66 @@ dotnet run --project poc/SwitchRpc.Poc --no-build -- --diagnose
 
 2026-09-20, sampled with `poc/idle-cpu.ps1` (TotalProcessorTime over a
 60 s window, reported as average % of one core; Task Manager-style
-percentages look smaller because they divide across all cores).
+percentages look smaller because they divide across all cores). Sampling
+progress lines are omitted below.
 
 | Scenario | Python baseline | .NET 10 POC |
 |---|---|---|
 | Eden closed (poll-only idle) | 0.91 % | 0.36 % |
 | Eden running, Scarlet in-game | 1.09 % | 0.86 % |
 
-![POC idle, Eden closed](benchmark/run1-poc-eden-off.png)
+**Run 1 — .NET POC, Eden closed:**
 
-![Python idle, Eden closed](benchmark/run2-python-eden-off.png)
+``` text
+PS> powershell -ExecutionPolicy Bypass -File poc/idle-cpu.ps1 -Name SwitchRpc.Poc -Seconds 60
+Sampling 'SwitchRpc.Poc' (PID 23848) for 60 seconds; keep the app running and hands off.
 
-![POC with Eden running](benchmark/run3-poc-eden-on.png)
+Process:            SwitchRpc.Poc (PID 23848)
+Sampled wall time:  60.1 s
+CPU time consumed:  0.22 s
+Average CPU usage:  0.36 % of one core
+```
 
-![Python with Eden running](benchmark/run4-python-eden-on.png)
+**Run 2 — Python baseline, Eden closed:**
+
+``` text
+PS> powershell -ExecutionPolicy Bypass -File poc/idle-cpu.ps1 -Name python -Id 23444 -Seconds 60
+Sampling 'python' (PID 23444) for 60 seconds; keep the app running and hands off.
+
+Process:            python (PID 23444)
+Sampled wall time:  60.1 s
+CPU time consumed:  0.55 s
+Average CPU usage:  0.91 % of one core
+```
+
+**Run 3 — .NET POC, Eden running with Scarlet:**
+
+``` text
+PS> powershell -ExecutionPolicy Bypass -File poc/idle-cpu.ps1 -Name SwitchRpc.Poc -Seconds 60
+Sampling 'SwitchRpc.Poc' (PID 30440) for 60 seconds...
+
+Process:            SwitchRpc.Poc (PID 30440)
+Sampled wall time:  60.1 s
+CPU time consumed:  0.52 s
+Average CPU usage:  0.86 % of one core
+```
+
+**Run 4 — Python baseline, Eden running with Scarlet:**
+
+``` text
+PS> powershell -ExecutionPolicy Bypass -File poc/idle-cpu.ps1 -Name python -Id 26464 -Seconds 60
+Sampling 'python' (PID 26464) for 60 seconds; keep the app running and hands off.
+
+Process:            python (PID 26464)
+Sampled wall time:  60.1 s
+CPU time consumed:  0.66 s
+Average CPU usage:  1.09 % of one core
+```
+
+Several unrelated idle `python` processes were present on the machine
+and measured 0.00 % over full windows (PIDs 9460 and 21416). `main.py`
+was identified as the PID printing presence updates to its console every
+few seconds.
 
 Findings:
 
@@ -110,7 +156,21 @@ Findings:
 
 Verified live on 2026-09-20 (Eden + Discord running, Scarlet save):
 
-![POC live loop running Scarlet](benchmark/poc-live-loop-scarlet.png)
+``` text
+SWITCH RPC POC started.
+Connecting to Discord...
+Discord RPC connected.
+Game detected: Pokémon Scarlet
+Save data refreshed.
+Rich Presence updated: Pokédex | Paldea: 22/400
+Rich Presence updated: Pokédex | Kitakami: 3/200
+Rich Presence updated: Pokédex | Blueberry: 0/243
+Save data refreshed.
+Rich Presence updated: Pokédex | Paldea: 22/400
+Rich Presence updated: Pokédex | Kitakami: 3/200
+Game: none
+RPC cleared. Goodbye.
+```
 
 - Presence appears within 1 s of game detection; Pokédex pages rotate
   every 5 s (Paldea → Kitakami → Blueberry).
