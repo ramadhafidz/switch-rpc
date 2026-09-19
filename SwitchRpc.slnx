@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SwitchRpc.App/SwitchRpc.App.csproj" />
+    <Project Path="src/SwitchRpc.Core/SwitchRpc.Core.csproj" />
+    <Project Path="src/SwitchRpc.Discord/SwitchRpc.Discord.csproj" />
+    <Project Path="src/SwitchRpc.Emulators.Eden/SwitchRpc.Emulators.Eden.csproj" />
+    <Project Path="src/SwitchRpc.Games.Pokemon/SwitchRpc.Games.Pokemon.csproj" />
+  </Folder>
+</Solution>
