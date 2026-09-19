@@ -1,26 +1,16 @@
-# Python
-.venv/
-__pycache__/
-*.py[cod]
-*$py.class
-.ruff_cache/
-
 # Local configuration
 config.local.json
 .env
 .env.*
 
-# Python build / packaging
-dist/
-build/
-*.spec
-*.egg-info/
-
-# C# / .NET
+# .NET build output
 **/bin/
 **/obj/
+TestResults/
+*.binlog
 *.user
 *.suo
+*.DotSettings.user
 
 # Visual Studio
 .vs/
@@ -33,16 +23,13 @@ build/
 
 # Test / temporary files
 *.log
+.pytest_cache/
 
 # Local save files
 *.sav
 *.dsv
 *.dat
 *.bin
-main
-main2
-backup
-poke_trade
 
 # Local emulator data
 eden/
@@ -54,8 +41,7 @@ eden/
 Thumbs.db
 .DS_Store
 
-# Codegraph
+# Tooling (local)
 .codegraph/
-
-# RTK
 rtk/
+.zcode/
