@@ -6,4 +6,7 @@
     <Project Path="src/SwitchRpc.Emulators.Eden/SwitchRpc.Emulators.Eden.csproj" />
     <Project Path="src/SwitchRpc.Games.Pokemon/SwitchRpc.Games.Pokemon.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SwitchRpc.Tests/SwitchRpc.Tests.csproj" />
+  </Folder>
 </Solution>

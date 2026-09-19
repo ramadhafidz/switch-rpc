@@ -10,8 +10,22 @@ public sealed class EdenSaveLocator
 	private readonly string _saveRoot;
 
 	public EdenSaveLocator()
+		: this(DefaultSaveRoot())
 	{
-		_saveRoot = Path.Combine(
+	}
+
+	/// <summary>
+	/// Allows tests and alternative hosts to point the locator at a
+	/// different save root.
+	/// </summary>
+	public EdenSaveLocator(string saveRoot)
+	{
+		_saveRoot = saveRoot;
+	}
+
+	private static string DefaultSaveRoot()
+	{
+		return Path.Combine(
 			Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
 			"eden",
 			"nand",
