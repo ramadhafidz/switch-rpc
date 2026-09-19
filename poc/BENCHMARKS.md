@@ -29,15 +29,20 @@ The Legends: Arceus save cross-validates identically as well:
 
 ## Measured results
 
-2026-09-20, Windows 11, Debug builds, single runs.
+2026-09-20, Windows 11. .NET numbers are Release-build medians of 3
+runs; Python numbers are medians of 3 runs.
 
-| Metric | Python baseline | .NET 10 POC |
+| Metric | Python baseline | .NET 10 POC (Release) |
 |---|---|---|
-| Import / startup | 478 ms | not yet measured |
+| Import / startup | 240 ms (median; 221–324) | not yet measured |
 | Working set after load | 29.3 MiB | 25.3 MiB |
-| Save refresh path (locate → read → state) | 572 ms | ~197 ms |
-| Save refresh path, PLA | 463 ms | ~119 ms |
+| Save refresh, Scarlet | 429 ms (median; 426–539) | ~88 ms |
+| Save refresh, Legends: Arceus | 322 ms (median; 319–332) | ~95 ms |
 | Threads | not yet measured | 8 |
+
+.NET save-refresh components: Scarlet — PKHeX identification 34 ms +
+parse 53 ms; PLA — identification 77 ms + parse 18 ms. Earlier
+Debug-build single runs (~197 ms / ~119 ms) are consistent with these.
 
 Caveats:
 
