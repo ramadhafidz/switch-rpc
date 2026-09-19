@@ -8,9 +8,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- CI workflow (GitHub Actions): builds the solution and runs the xUnit suite on every push to `main` and every pull request, checking out the pinned PKHeX revision into `bridge/PKHeX/`.
+- Packaging documentation for distributable single-file Windows builds.
+
+## [0.2.0] - 2026-09-20
+
+The native .NET 10 migration (Phase 2) is complete; the repository is now .NET-only. Tag: `v0.2.0-dotnet-core`.
+
+### Added
+
 - .NET 10 implementation of the RPC core under `src/` (Phase 2 migration): layered `SwitchRpc.*` solution with direct PKHeX.Core save reading for Pokémon Scarlet/Violet and Legends: Arceus, config-driven game definitions, and Discord Rich Presence with reconnection hardening.
 - .NET test suite (xUnit) covering the core state, save readers, and the Eden save locator.
 - Diagnostic mode (`--diagnose`) for the .NET application, plus benchmark documentation in `docs/BENCHMARKS.md`.
+
+### Removed
+
+- Python baseline (`main.py`, `dev.py`, `games/`, `rpc/`, `test/`, `pyproject.toml`, `requirements*.txt`) and the `bridge/PokemonSaveReader` JSON bridge — superseded by the native .NET implementation. Their history is preserved under the `v0.1.0-python-baseline` tag, including verified extractors (trainer, party, boxes, items, progress) not yet ported to the .NET readers.
+
+### Technical Notes
+
+- The project targets Windows.
+- Save parsing is read-only.
+- Unsupported save formats remain unsupported until their format and required data have been verified.
+- Raw save offsets are not introduced without documented verification.
+
+## [0.1.0] - 2026-09-20
+
+The Python baseline, stabilized and tagged `v0.1.0-python-baseline`. Retired in 0.2.0.
+
+### Added
+
 - Modular game definitions through `GameRegistry`.
 - Normalized `GameState` model for game data.
 - Eden process detection.
@@ -42,46 +69,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Normalized repository line endings to LF through `.gitattributes`, so Ruff format checks behave consistently on Windows checkouts regardless of `core.autocrlf`.
 - Configured Pyright to resolve the project virtual environment explicitly, fixing a false-positive import error for `pypresence` and missing-source warnings for `psutil` and `pywin32`.
 
-### Removed
-
-- Python baseline (`main.py`, `dev.py`, `games/`, `rpc/`, `test/`, `pyproject.toml`, `requirements*.txt`) and the `bridge/PokemonSaveReader` JSON bridge — superseded by the native .NET implementation. Their history is preserved under the `v0.1.0-python-baseline` tag, including verified extractors (trainer, party, boxes, items, progress) not yet ported to the .NET readers.
-
 ### Fixed
 
 - Eden game detection now works from the emulator window title when the process command line does not expose the running game.
 - Discord Rich Presence can reconnect after a connection/update failure.
 - Discord Rich Presence is cleared when the detected game closes.
 - Save-reader failures are handled without terminating the main Python application.
-
-### Technical Notes
-
-- The project currently targets Windows.
-- The Python runtime communicates with PKHeX.Core through a separate .NET bridge.
-- Save parsing is designed to be read-only.
-- Unsupported save formats should remain unsupported until their format and required data have been verified.
-- Raw save offsets should not be introduced without documented verification.
-
-## Release History
-
-No public release versions have been established yet.
-
-Future releases should move completed entries from `[Unreleased]` into a versioned section, for example:
-
-```markdown
-## [0.1.0] - YYYY-MM-DD
-
-### Added
-
-- ...
-
-### Changed
-
-- ...
-
-### Fixed
-
-- ...
-```
 
 ## Versioning Guidelines
 
@@ -122,4 +115,6 @@ Changes should remain under `[Unreleased]` during development. When a release is
 5. Start a fresh `[Unreleased]` section.
 6. Ensure the changelog matches the actual repository state.
 
-[unreleased]: https://github.com/ramadhafidz/switch-rpc/compare/HEAD...HEAD
+[unreleased]: https://github.com/ramadhafidz/switch-rpc/compare/v0.2.0-dotnet-core...HEAD
+[0.2.0]: https://github.com/ramadhafidz/switch-rpc/compare/v0.1.0-python-baseline...v0.2.0-dotnet-core
+[0.1.0]: https://github.com/ramadhafidz/switch-rpc/releases/tag/v0.1.0-python-baseline

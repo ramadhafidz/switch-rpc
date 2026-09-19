@@ -181,6 +181,8 @@ bridge/
 
 `SwitchRpc.Games.Pokemon` references `bridge/PKHeX/PKHeX.Core/PKHeX.Core.csproj` through a ProjectReference. The checkout is intentionally ignored by Git.
 
+The checkout must match the pinned upstream revision (`kwsch/PKHeX` @ `8ad201e80244f630ab5a46922ab72fb79c5ad4f4`) — CI checks out the same revision automatically. Clone command: `docs/DEVELOPMENT.md`, section "PKHeX Local Setup".
+
 Do not:
 
 - Commit PKHeX source.
@@ -411,9 +413,12 @@ dotnet build SwitchRpc.slnx
 dotnet test SwitchRpc.slnx
 dotnet run --project src/SwitchRpc.App
 dotnet run --project src/SwitchRpc.App --no-build -- --diagnose
+dotnet publish src/SwitchRpc.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true
 ```
 
 The solution uses the `.slnx` format (the .NET 10 default). Tests use xUnit and live in `tests/SwitchRpc.Tests`.
+
+CI (`.github/workflows/ci.yml`) builds and tests every push to `main` and every pull request; it checks out the pinned PKHeX revision itself.
 
 The `--diagnose` mode runs the whole pipeline once without Eden or Discord and prints pipeline metrics for `docs/BENCHMARKS.md`.
 

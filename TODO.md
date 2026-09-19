@@ -110,8 +110,8 @@ Post-migration hardening on `main`, following the Phase 2 .NET merge described i
 
 ## 🛠️ Developer Tooling
 
-- [ ] Add CI checks running `dotnet build` and `dotnet test`.
-- [ ] Packaging: single-file executable build.
+- [x] Add CI checks running `dotnet build` and `dotnet test`.
+- [x] Packaging: single-file executable build.
 - [x] Document the recommended development workflow.
 
 ---

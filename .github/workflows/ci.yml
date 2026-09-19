@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout SWITCH RPC
+        uses: actions/checkout@v4
+
+      # PKHeX is an untracked local checkout on dev machines. CI fetches the
+      # same pinned revision documented in docs/DEVELOPMENT.md (PKHeX Local Setup).
+      - name: Checkout PKHeX (pinned revision)
+        uses: actions/checkout@v4
+        with:
+          repository: kwsch/PKHeX
+          ref: 8ad201e80244f630ab5a46922ab72fb79c5ad4f4
+          path: bridge/PKHeX
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build
+        run: dotnet build SwitchRpc.slnx
+
+      - name: Test
+        run: dotnet test SwitchRpc.slnx --no-build
