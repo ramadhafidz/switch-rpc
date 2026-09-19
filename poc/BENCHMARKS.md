@@ -5,6 +5,21 @@ architecture is better suited for the long term before the project
 commits to migration. This file records the benchmark plan, measured
 results, and how to reproduce them.
 
+## Test environment
+
+All measurements were taken on the same machine in the same session, so
+the Python vs .NET comparison is internally fair; absolute numbers will
+differ on other hardware.
+
+| | |
+|---|---|
+| Machine | Dell OptiPlex 7050 (desktop) |
+| CPU | Intel Core i5-7500 @ 3.40 GHz (4 cores / 4 threads) |
+| RAM | 16 GB |
+| OS | Windows 11 Pro (build 26100) |
+| .NET SDK | 10.0.401 |
+| Python | 3.14.4 (project venv) |
+
 ## Cross-validation
 
 Before timing anything, both implementations were pointed at the same
