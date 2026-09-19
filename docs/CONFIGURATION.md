@@ -4,7 +4,7 @@
 
 SWITCH RPC uses `config.json` as its primary configuration file.
 
-Configuration is intentionally kept separate from the application logic so that game-specific Rich Presence settings and runtime behavior can be changed without modifying Python source code.
+Configuration is intentionally kept separate from the application logic so that game-specific Rich Presence settings and runtime behavior can be changed without modifying source code. Both implementations consume the same file: the Python baseline application and the .NET implementation under `src/`.
 
 The current configuration has two main sections:
 
@@ -24,30 +24,35 @@ The default structure is:
 {
 	"discord": {
 		"client_id": "YOUR_DISCORD_APPLICATION_ID",
-		"update_interval": 15
+		"save_refresh_interval": 15,
+		"pokedex_rotation_interval": 5
 	},
 	"games": {
 		"pokemon_legends_arceus": {
 			"name": "Pokémon Legends: Arceus",
 			"region": "Hisui",
+			"title_id": "01001F5010DFA000",
 			"large_image": "arceus",
 			"large_text": "Pokémon Legends: Arceus"
 		},
 		"pokemon_scarlet": {
 			"name": "Pokémon Scarlet",
 			"region": "Paldea",
+			"title_id": "0100A3D008C5C000",
 			"large_image": "scarlet",
 			"large_text": "Pokémon Scarlet"
 		},
 		"pokemon_violet": {
 			"name": "Pokémon Violet",
 			"region": "Paldea",
+			"title_id": "01008F6008C5E000",
 			"large_image": "violet",
 			"large_text": "Pokémon Violet"
 		},
 		"pokemon_legends_za": {
 			"name": "Pokémon Legends: Z-A",
 			"region": "Kalos",
+			"title_id": "0100F43008C44000",
 			"large_image": "za",
 			"large_text": "Pokémon Legends: Z-A"
 		}
@@ -65,7 +70,8 @@ The `discord` section contains settings related to Discord Rich Presence.
 {
 	"discord": {
 		"client_id": "YOUR_DISCORD_APPLICATION_ID",
-		"update_interval": 15
+		"save_refresh_interval": 15,
+		"pokedex_rotation_interval": 5
 	}
 }
 ```
@@ -86,19 +92,19 @@ A Discord Application ID is not a secret credential. However, never place Discor
 
 ---
 
-### `update_interval`
+### `save_refresh_interval`
 
-Controls how often the main monitoring loop checks the current state.
+Controls how often the application re-reads the current game's save file while a game is running.
 
 Example:
 
 ```json
-"update_interval": 15
+"save_refresh_interval": 15
 ```
 
 The value is specified in seconds.
 
-A lower value makes the application check more frequently, while a higher value reduces the frequency of checks.
+A lower value keeps presence data fresher, while a higher value reduces process and filesystem activity.
 
 The current project uses:
 
@@ -108,7 +114,19 @@ The current project uses:
 
 as the configured interval.
 
-The interval affects the monitoring loop and should be kept reasonable to avoid unnecessary process, filesystem, and RPC activity.
+---
+
+### `pokedex_rotation_interval`
+
+Controls how often the Rich Presence rotates to the next Pokédex page while a game is running.
+
+Example:
+
+```json
+"pokedex_rotation_interval": 5
+```
+
+The value is specified in seconds.
 
 ---
 
@@ -125,6 +143,7 @@ Example:
 	"pokemon_scarlet": {
 		"name": "Pokémon Scarlet",
 		"region": "Paldea",
+		"title_id": "0100A3D008C5C000",
 		"large_image": "scarlet",
 		"large_text": "Pokémon Scarlet"
 	}
@@ -197,6 +216,29 @@ This value is currently used when constructing Rich Presence details.
 
 ---
 
+### `title_id`
+
+The Nintendo Switch title ID used to locate the game's save directory under the emulator's save storage.
+
+Example:
+
+```json
+"title_id": "0100A3D008C5C000"
+```
+
+Known title IDs:
+
+```text
+Pokémon Legends: Arceus   01001F5010DFA000
+Pokémon Scarlet           0100A3D008C5C000
+Pokémon Violet            01008F6008C5E000
+Pokémon Legends: Z-A      0100F43008C44000
+```
+
+A game entry without a valid `title_id` cannot have its save located, and the application skips it with a warning.
+
+---
+
 ### `large_image`
 
 The Discord Rich Presence large image asset key.
@@ -238,19 +280,21 @@ A new entry can be added like:
 	"pokemon_example": {
 		"name": "Pokémon Example",
 		"region": "Example Region",
+		"title_id": "0100000000000000",
 		"large_image": "example",
 		"large_text": "Pokémon Example"
 	}
 }
 ```
 
+A configured game is automatically detected through its window title and its save is located through its `title_id`.
+
 However, complete support may also require changes to:
 
 ```text
-games/detector.py
-games/save_paths.py
-bridge/PokemonSaveReader/Program.cs
-games/state.py
+bridge/PokemonSaveReader/Readers/   (Python baseline save reading)
+src/SwitchRpc.Games.Pokemon/        (.NET save reading)
+games/state.py                      (Python baseline state mapping)
 ```
 
 and corresponding tests and documentation.

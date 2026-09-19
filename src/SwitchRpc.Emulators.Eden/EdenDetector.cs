@@ -9,12 +9,23 @@ public sealed class EdenDetector
 {
 	private const string ProcessName = "eden";
 
+	private readonly IReadOnlyList<GameDefinition> _games;
+
+	public EdenDetector(IReadOnlyList<GameDefinition> games)
+	{
+		_games = games;
+	}
+
 	public bool IsRunning()
 	{
 		return FindProcess() is not null;
 	}
 
-	public string? GetWindowTitle()
+	/// <summary>
+	/// Matches visible Eden window titles against the configured game
+	/// display names and returns the running game, if any.
+	/// </summary>
+	public GameDefinition? DetectGame()
 	{
 		using var process = FindProcess();
 
@@ -38,17 +49,16 @@ public sealed class EdenDetector
 			return true;
 		}, IntPtr.Zero);
 
-		return titles.FirstOrDefault(title =>
-			title.Contains("Pokémon", StringComparison.Ordinal));
-	}
+		foreach (var title in titles)
+		{
+			foreach (var game in _games)
+			{
+				if (title.Contains(game.DisplayName, StringComparison.Ordinal))
+					return game;
+			}
+		}
 
-	public GameDefinition? DetectGame()
-	{
-		var title = GetWindowTitle();
-
-		return title is null
-			? null
-			: GameCatalog.FindByWindowTitle(title);
+		return null;
 	}
 
 	private static Process? FindProcess()

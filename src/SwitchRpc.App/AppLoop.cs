@@ -15,7 +15,7 @@ public sealed class AppLoop
 {
 	private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(1);
 
-	private readonly EdenDetector _detector = new();
+	private readonly EdenDetector _detector;
 	private readonly EdenSaveLocator _locator = new();
 	private readonly PokemonSaveReader _saveReader = new();
 	private readonly PresenceClient _rpc;
@@ -30,15 +30,12 @@ public sealed class AppLoop
 	private (string, string, string, string, string)? _previousPresence;
 	private bool _cancelRequested;
 
-	public AppLoop(
-		string clientId,
-		TimeSpan saveRefreshInterval,
-		TimeSpan dexRotationInterval
-	)
+	public AppLoop(AppConfig config)
 	{
-		_rpc = new PresenceClient(clientId);
-		_saveRefreshInterval = saveRefreshInterval;
-		_dexRotationInterval = dexRotationInterval;
+		_detector = new EdenDetector(config.Games);
+		_rpc = new PresenceClient(config.ClientId);
+		_saveRefreshInterval = config.SaveRefreshInterval;
+		_dexRotationInterval = config.DexRotationInterval;
 	}
 
 	public int Run()
@@ -182,7 +179,7 @@ public sealed class AppLoop
 		var page = pages[_currentPage];
 		var details = "Pokédex";
 
-		var presence = (game.DisplayName, details, page, game.ImageKey, game.DisplayName);
+		var presence = (game.DisplayName, details, page, game.ImageKey, game.ImageText);
 
 		if (presence == _previousPresence)
 			return;
@@ -198,7 +195,7 @@ public sealed class AppLoop
 			}
 		}
 
-		if (_rpc.Update(details, page, game.ImageKey, game.DisplayName))
+		if (_rpc.Update(details, page, game.ImageKey, game.ImageText))
 		{
 			Console.WriteLine($"Rich Presence updated: {details} | {page}");
 			_previousPresence = presence;

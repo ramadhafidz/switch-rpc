@@ -17,17 +17,33 @@ public static class Diagnose
 		Console.WriteLine("SWITCH RPC — diagnose");
 		Console.WriteLine();
 
+		var configPath = ConfigLocator.Find();
+		AppConfig? config = null;
+
+		if (configPath is not null)
+		{
+			config = ConfigLocator.Load(configPath);
+		}
+		else
+		{
+			Console.WriteLine("config.json not found; game detection and save metrics are skipped.");
+			Console.WriteLine();
+		}
+
 		PrintProcessMetrics();
 
 		Console.WriteLine();
 
-		PrintGameDetectionMetrics();
+		PrintGameDetectionMetrics(config);
 
 		Console.WriteLine();
 
-		PrintSaveMetrics();
+		if (config is not null)
+		{
+			PrintSaveMetrics(config);
+			Console.WriteLine();
+		}
 
-		Console.WriteLine();
 		Console.WriteLine("Diagnose complete.");
 		return 0;
 	}
@@ -43,9 +59,9 @@ public static class Diagnose
 		Console.WriteLine($"Threads: {process.Threads.Count}");
 	}
 
-	private static void PrintGameDetectionMetrics()
+	private static void PrintGameDetectionMetrics(AppConfig? config)
 	{
-		var detector = new EdenDetector();
+		var detector = new EdenDetector(config?.Games ?? []);
 
 		var stopwatch = Stopwatch.StartNew();
 		var game = detector.DetectGame();
@@ -61,12 +77,12 @@ public static class Diagnose
 		);
 	}
 
-	private static void PrintSaveMetrics()
+	private static void PrintSaveMetrics(AppConfig config)
 	{
 		var locator = new EdenSaveLocator();
 		var reader = new PokemonSaveReader();
 
-		foreach (var definition in GameCatalog.Games)
+		foreach (var definition in config.Games)
 		{
 			var savePath = locator.Locate(definition.TitleId);
 

@@ -1,6 +1,14 @@
 using System.Text.Json;
+using SwitchRpc.Core;
 
 namespace SwitchRpc.App;
+
+public sealed record AppConfig(
+	string ClientId,
+	TimeSpan SaveRefreshInterval,
+	TimeSpan DexRotationInterval,
+	IReadOnlyList<GameDefinition> Games
+);
 
 public static class ConfigLocator
 {
@@ -35,15 +43,15 @@ public static class ConfigLocator
 		return null;
 	}
 
-	public static (string ClientId, TimeSpan SaveRefresh, TimeSpan DexRotation) Load(
-		string configPath
-	)
+	public static AppConfig Load(string configPath)
 	{
 		using var document = JsonDocument.Parse(
 			File.ReadAllText(configPath)
 		);
 
-		var discord = document.RootElement.GetProperty("discord");
+		var root = document.RootElement;
+
+		var discord = root.GetProperty("discord");
 
 		var clientId = discord
 			.GetProperty("client_id")
@@ -63,6 +71,71 @@ public static class ConfigLocator
 				: 5
 		);
 
-		return (clientId, saveRefresh, dexRotation);
+		var games = new List<GameDefinition>();
+
+		if (root.TryGetProperty("games", out var gamesElement))
+		{
+			foreach (var game in gamesElement.EnumerateObject())
+			{
+				if (game.Value.ValueKind != JsonValueKind.Object)
+				{
+					Console.WriteLine(
+						$"config.json: skipping invalid game entry '{game.Name}'."
+					);
+
+					continue;
+				}
+
+				var displayName = game.Value.TryGetProperty("name", out var name)
+					? name.GetString()
+					: null;
+
+				var titleId = game.Value.TryGetProperty("title_id", out var title)
+					? title.GetString()
+					: null;
+
+				var imageKey = game.Value.TryGetProperty("large_image", out var image)
+					? image.GetString()
+					: null;
+
+				if (string.IsNullOrWhiteSpace(displayName)
+					|| string.IsNullOrWhiteSpace(titleId)
+					|| string.IsNullOrWhiteSpace(imageKey))
+				{
+					Console.WriteLine(
+						$"config.json: skipping game '{game.Name}' —"
+						+ " 'name', 'title_id' and 'large_image' are required."
+					);
+
+					continue;
+				}
+
+				var region = game.Value.TryGetProperty("region", out var regionElement)
+					? regionElement.GetString() ?? ""
+					: "";
+
+				var imageText = game.Value.TryGetProperty("large_text", out var textElement)
+					? textElement.GetString() ?? ""
+					: "";
+
+				games.Add(new GameDefinition(
+					game.Name,
+					displayName,
+					titleId,
+					imageKey,
+					region,
+					imageText
+				));
+			}
+		}
+
+		if (games.Count == 0)
+		{
+			throw new InvalidOperationException(
+				"config.json: no usable game definitions found."
+			);
+		}
+
+		return new AppConfig(clientId, saveRefresh, dexRotation, games);
 	}
 }

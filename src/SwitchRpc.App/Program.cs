@@ -1,5 +1,4 @@
 using SwitchRpc.App;
-using SwitchRpc.Core;
 
 if (args.Contains("--diagnose"))
 {
@@ -18,6 +17,4 @@ if (configPath is null)
 	return 1;
 }
 
-var (clientId, saveRefresh, dexRotation) = ConfigLocator.Load(configPath);
-
-return new AppLoop(clientId, saveRefresh, dexRotation).Run();
+return new AppLoop(ConfigLocator.Load(configPath)).Run();
