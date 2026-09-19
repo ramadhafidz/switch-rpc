@@ -32,9 +32,18 @@ $process.Refresh()
 $cpuStart = $process.TotalProcessorTime.TotalSeconds
 $wallStart = [DateTime]::UtcNow
 
-Write-Host "Sampling '$($process.ProcessName)' (PID $($process.Id)) for $Seconds seconds..."
+Write-Host "Sampling '$($process.ProcessName)' (PID $($process.Id)) for $Seconds seconds; keep the app running and hands off."
 
-Start-Sleep -Seconds $Seconds
+$remaining = $Seconds
+
+while ($remaining -gt 0) {
+	$step = [Math]::Min(10, $remaining)
+
+	Start-Sleep -Seconds $step
+	$remaining -= $step
+
+	Write-Host ("  ... {0} s remaining" -f $remaining)
+}
 
 $process.Refresh()
 
