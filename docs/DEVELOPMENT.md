@@ -248,6 +248,36 @@ python dev.py --help
 
 CLI ini menjalankan tool yang sama dengan workflow manual, berhenti pada subprocess pertama yang gagal dalam command gabungan, dan meneruskan exit code dari subprocess yang gagal. Jika executable seperti `dotnet` tidak tersedia, CLI menampilkan error yang jelas tanpa menyembunyikan output asli command.
 
+### 7.2 .NET Implementation (src/)
+
+Implementasi .NET 10 native (Phase 2) berada di `src/` dengan solusi `SwitchRpc.slnx`.
+
+Build seluruh solusi:
+
+```powershell
+dotnet build SwitchRpc.slnx
+```
+
+Jalankan aplikasi .NET:
+
+```powershell
+dotnet run --project src/SwitchRpc.App
+```
+
+Mode diagnose (tanpa Eden/Discord; mencetak metrik pipeline untuk benchmark):
+
+```powershell
+dotnet run --project src/SwitchRpc.App --no-build -- --diagnose
+```
+
+Jalankan test .NET:
+
+```powershell
+dotnet test SwitchRpc.slnx
+```
+
+Detail arsitektur proyek ada di `docs/ARCHITECTURE.md`, dan bukti benchmark migrasi ada di `docs/BENCHMARKS.md`.
+
 ---
 
 ## 8. Sebelum Mengubah Kode

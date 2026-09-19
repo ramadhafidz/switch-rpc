@@ -56,6 +56,47 @@ flowchart TD
 
 ---
 
+## .NET Solution Architecture (Phase 2 — in progress)
+
+The migration to a native .NET 10 application is underway on the `experiment/dotnet-core` branch. The implementation lives in five projects under `src/`, with physical dependency rules that enforce the architectural boundaries described in this document.
+
+| Project | Responsibility | References |
+|---|---|---|
+| `SwitchRpc.Core` | Normalized `GameState`, `GameDefinition`, presence formatting | nothing |
+| `SwitchRpc.Games.Pokemon` | PKHeX-based save readers behind a `PokemonSaveReader` facade | PKHeX.Core, Core |
+| `SwitchRpc.Emulators.Eden` | Eden process/window detection, save location | Core |
+| `SwitchRpc.Discord` | Discord Rich Presence wrapper | DiscordRichPresence |
+| `SwitchRpc.App` | Console host, monitoring loop, configuration, diagnostics | all of the above |
+
+```mermaid
+---
+config:
+  theme: dark
+  look: handDrawn
+  layout: elk
+---
+flowchart TB
+    APP["SwitchRpc.App"] --> CORE["SwitchRpc.Core"]
+    APP --> GAME["SwitchRpc.Games.Pokemon"]
+    APP --> EDEN["SwitchRpc.Emulators.Eden"]
+    APP --> DISC["SwitchRpc.Discord"]
+
+    GAME --> PKHEX["PKHeX.Core"]
+    GAME --> CORE
+    EDEN --> CORE
+```
+
+Rules enforced by the project split:
+
+- `SwitchRpc.Core` references nothing — PKHeX, Discord, and Eden types cannot leak into the normalized state.
+- Only `SwitchRpc.Games.Pokemon` touches PKHeX, through the same verified extraction logic as the bridge.
+- Only `SwitchRpc.Discord` touches the Discord library.
+- Game definitions come from `config.json` at runtime; display names and artwork are configuration, not code.
+
+Tests live in `tests/SwitchRpc.Tests` (xUnit); run them with `dotnet test SwitchRpc.slnx`. Benchmark evidence for the migration decision is recorded in `docs/BENCHMARKS.md`.
+
+---
+
 ## Runtime/Application Flow
 
 The main application periodically checks the emulator and updates the Discord Rich Presence when the detected state changes.

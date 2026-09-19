@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- .NET 10 implementation of the RPC core under `src/` (Phase 2 migration): layered `SwitchRpc.*` solution with direct PKHeX.Core save reading for Pokémon Scarlet/Violet and Legends: Arceus, config-driven game definitions, and Discord Rich Presence with reconnection hardening.
+- .NET test suite (xUnit) covering the core state, save readers, and the Eden save locator.
+- Diagnostic mode (`--diagnose`) for the .NET application, plus benchmark documentation in `docs/BENCHMARKS.md`.
 - Modular game definitions through `GameRegistry`.
 - Normalized `GameState` model for game data.
 - Eden process detection.

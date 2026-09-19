@@ -84,12 +84,12 @@ Python startup and full save-read path:
 .NET POC diagnose (process metrics, detection, save metrics):
 
 ``` powershell
-dotnet run --project poc/SwitchRpc.Poc --no-build -- --diagnose
+dotnet run --project src/SwitchRpc.App --no-build -- --diagnose
 ```
 
 ## Idle CPU (measured live, 60 s samples)
 
-2026-09-20, sampled with `poc/idle-cpu.ps1` (TotalProcessorTime over a
+2026-09-20, sampled with `docs/idle-cpu.ps1` (TotalProcessorTime over a
 60 s window, reported as average % of one core; Task Manager-style
 percentages look smaller because they divide across all cores). Sampling
 progress lines are omitted below.
@@ -102,7 +102,7 @@ progress lines are omitted below.
 **Run 1 — .NET POC, Eden closed:**
 
 ``` text
-PS> powershell -ExecutionPolicy Bypass -File poc/idle-cpu.ps1 -Name SwitchRpc.Poc -Seconds 60
+PS> powershell -ExecutionPolicy Bypass -File docs/idle-cpu.ps1 -Name SwitchRpc.Poc -Seconds 60
 Sampling 'SwitchRpc.Poc' (PID 23848) for 60 seconds; keep the app running and hands off.
 
 Process:            SwitchRpc.Poc (PID 23848)
@@ -114,7 +114,7 @@ Average CPU usage:  0.36 % of one core
 **Run 2 — Python baseline, Eden closed:**
 
 ``` text
-PS> powershell -ExecutionPolicy Bypass -File poc/idle-cpu.ps1 -Name python -Id 23444 -Seconds 60
+PS> powershell -ExecutionPolicy Bypass -File docs/idle-cpu.ps1 -Name python -Id 23444 -Seconds 60
 Sampling 'python' (PID 23444) for 60 seconds; keep the app running and hands off.
 
 Process:            python (PID 23444)
@@ -126,7 +126,7 @@ Average CPU usage:  0.91 % of one core
 **Run 3 — .NET POC, Eden running with Scarlet:**
 
 ``` text
-PS> powershell -ExecutionPolicy Bypass -File poc/idle-cpu.ps1 -Name SwitchRpc.Poc -Seconds 60
+PS> powershell -ExecutionPolicy Bypass -File docs/idle-cpu.ps1 -Name SwitchRpc.Poc -Seconds 60
 Sampling 'SwitchRpc.Poc' (PID 30440) for 60 seconds...
 
 Process:            SwitchRpc.Poc (PID 30440)
@@ -138,7 +138,7 @@ Average CPU usage:  0.86 % of one core
 **Run 4 — Python baseline, Eden running with Scarlet:**
 
 ``` text
-PS> powershell -ExecutionPolicy Bypass -File poc/idle-cpu.ps1 -Name python -Id 26464 -Seconds 60
+PS> powershell -ExecutionPolicy Bypass -File docs/idle-cpu.ps1 -Name python -Id 26464 -Seconds 60
 Sampling 'python' (PID 26464) for 60 seconds; keep the app running and hands off.
 
 Process:            python (PID 26464)
