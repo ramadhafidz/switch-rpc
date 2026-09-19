@@ -426,6 +426,37 @@ Do not introduce additional analyzers, test frameworks, or build tools unless th
 
 ---
 
+## RTK (Command Wrapper)
+
+`rtk` (installed locally) wraps shell commands to compress their output — typically 60–90% fewer tokens on common operations. The project's RTK config is `.rtk/filters.toml`.
+
+### Golden Rule
+
+**Prefix shell commands with `rtk`.** Commands with a dedicated RTK filter get compressed output; everything else passes through unchanged — so prefixing is always safe. Inside `&&` chains, prefix each command:
+
+```text
+rtk git add . && rtk git commit -m "msg" && rtk git push
+```
+
+### Most useful in this repository
+
+```text
+rtk git status              # compact status
+rtk git log / diff / show   # compact git output (59–80%)
+rtk gh run list             # compact CI run list (82%)
+rtk gh pr view / checks     # compact PR output
+rtk err <cmd>               # errors only, from any command
+rtk summary <cmd>           # smart summary of any command output
+rtk gain                    # token-savings statistics
+rtk proxy <cmd>             # bypass filtering (debugging RTK itself)
+```
+
+There is no `dotnet`-specific filter (as of RTK 0.42): `rtk dotnet ...` passes through unchanged, which is fine.
+
+The full generic cheat sheet (other ecosystems) was removed from `CLAUDE.md` on purpose; it is recoverable with `git show 751f888:CLAUDE.md`. Note that running `rtk init` re-creates that cheat sheet in `CLAUDE.md` — this repo intentionally keeps RTK guidance here instead, with `CLAUDE.md` as a pointer to `AGENTS.md`.
+
+---
+
 ## C# Code Style
 
 Use:
