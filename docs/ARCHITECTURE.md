@@ -2,7 +2,7 @@
 
 ## Overview
 
-Pokémon Switch RPC is designed as a modular application with separate responsibilities for emulator detection, game configuration, save-data reading, application state, and Discord Rich Presence.
+SWITCH RPC is designed as a modular application with separate responsibilities for emulator detection, game configuration, save-data reading, application state, and Discord Rich Presence.
 
 The main application is written in Python, while Pokémon save parsing is handled by a small C#/.NET bridge that uses PKHeX.Core.
 

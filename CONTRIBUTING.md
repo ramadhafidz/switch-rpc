@@ -2,7 +2,7 @@
 
 It's awesome that you are interested in contributing, thanks :heart:! This guide explains our internal processes and how we can work together to the best of our ability.
 
-Pokémon Switch RPC is a modular, read-only Discord Rich Presence application. Contributions are welcome, especially improvements to game detection, save reading, Discord Rich Presence, documentation, and testing.
+SWITCH RPC is a modular, read-only Discord Rich Presence application. Contributions are welcome, especially improvements to game detection, save reading, Discord Rich Presence, documentation, and testing.
 
 ## 📑 How to contribute
 
@@ -91,7 +91,7 @@ The save-reading bridge uses C# and references `PKHeX.Core`.
 
 ```powershell
 git clone <repository-url>
-cd pokemon-switch-rpc
+cd switch-rpc
 ```
 
 ### Create the Python Environment
@@ -137,7 +137,7 @@ Do not commit the local `bridge/PKHeX/` source tree.
 ## Project Structure
 
 ```text
-pokemon-switch-rpc/
+switch-rpc/
 ├── main.py
 ├── config.json
 ├── requirements.txt

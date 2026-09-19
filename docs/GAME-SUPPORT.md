@@ -2,7 +2,7 @@
 
 ## Overview
 
-Pokémon Switch RPC is designed so that emulator detection and save-data support are implemented independently for each game.
+SWITCH RPC is designed so that emulator detection and save-data support are implemented independently for each game.
 
 A game can be detected by Eden before its save reader is implemented.
 

@@ -1,6 +1,6 @@
 # DISCORD-RPC.md
 
-Dokumentasi integrasi **Discord Rich Presence** pada Pokémon Switch RPC.
+Dokumentasi integrasi **Discord Rich Presence** pada SWITCH RPC.
 
 Dokumen ini menjelaskan bagaimana aplikasi berkomunikasi dengan Discord, struktur wrapper RPC, lifecycle connection, payload Rich Presence, artwork, troubleshooting, dan aturan pengembangan.
 
@@ -8,7 +8,7 @@ Dokumen ini menjelaskan bagaimana aplikasi berkomunikasi dengan Discord, struktu
 
 ## 1. Overview
 
-Pokémon Switch RPC menggunakan Discord Rich Presence untuk menampilkan status game yang sedang dimainkan.
+SWITCH RPC menggunakan Discord Rich Presence untuk menampilkan status game yang sedang dimainkan.
 
 Alur sederhananya:
 

@@ -1,6 +1,6 @@
 # DEVELOPMENT.md
 
-Panduan pengembangan untuk **Pokémon Switch RPC**.
+Panduan pengembangan untuk **SWITCH RPC**.
 
 Dokumen ini menjelaskan workflow development, struktur kode, cara menjalankan komponen, testing, debugging, dan aturan praktis ketika menambahkan atau mengubah fitur.
 
@@ -58,7 +58,7 @@ Clone repository:
 
 ```powershell
 git clone <repository-url>
-cd pokemon-switch-rpc
+cd switch-rpc
 ```
 
 Buat virtual environment:
@@ -170,7 +170,7 @@ python main.py
 Output normal kira-kira:
 
 ```text
-Pokémon Switch RPC started.
+SWITCH RPC started.
 Connecting to Discord...
 Discord RPC connected.
 Eden: running

@@ -2,9 +2,13 @@
 
 ## Project Overview
 
-Pokémon Switch RPC is a modular Python application that provides Discord
+SWITCH RPC is a modular Python application that provides Discord
 Rich Presence for Pokémon games running through the Eden Nintendo Switch
 emulator.
+
+The long-term direction is a modular Nintendo Switch gaming platform —
+see `docs/ROADMAP.md`. Pokémon support through PKHeX.Core is the first
+fully implemented part of that platform.
 
 The application is designed to:
 
@@ -789,7 +793,7 @@ Keep the existing structure unless there is a strong reason to change
 it:
 
 ``` text
-pokemon-switch-rpc/
+switch-rpc/
 ├── main.py
 ├── dev.py
 ├── config.json

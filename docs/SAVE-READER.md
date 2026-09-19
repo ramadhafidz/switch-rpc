@@ -4,7 +4,7 @@
 
 The Save Reader subsystem is responsible for locating supported Pokémon save files and extracting game data from them.
 
-Pokémon Switch RPC does not parse Pokémon save files directly in Python. Instead, the project uses a small C#/.NET bridge that relies on **PKHeX.Core** for save-format handling.
+SWITCH RPC does not parse Pokémon save files directly in Python. Instead, the project uses a small C#/.NET bridge that relies on **PKHeX.Core** for save-format handling.
 
 The overall flow is:
 

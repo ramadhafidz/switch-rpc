@@ -1,6 +1,6 @@
 # PKHeX.md
 
-Technical documentation for the role of **PKHeX** and **PKHeX.Core** in Pokémon Switch RPC.
+Technical documentation for the role of **PKHeX** and **PKHeX.Core** in SWITCH RPC.
 
 This document exists so that developers and AI coding agents understand what PKHeX is, how it works, what it supports, what it can do, and — most importantly — how this project is allowed to use it.
 
@@ -25,7 +25,7 @@ PKHeX
         legality logic, and related abstractions
 ```
 
-Pokémon Switch RPC does **not** need the graphical PKHeX application.
+SWITCH RPC does **not** need the graphical PKHeX application.
 
 It uses:
 
@@ -53,7 +53,7 @@ Different Pokémon games use different:
 
 The PKHeX developer has explicitly explained that each set of games has its own format and quirks, including checksums and cryptographic signatures, and that PKHeX provides abstractions for each format. citeturn1search6
 
-Therefore, Pokémon Switch RPC should not reinvent save parsing unless there is a specific, verified reason to do so.
+Therefore, SWITCH RPC should not reinvent save parsing unless there is a specific, verified reason to do so.
 
 Instead:
 
@@ -162,7 +162,7 @@ The current source also contains support for several related Pokémon titles and
 - PokéStock-related formats;
 - Pokémon Ranch-related data.
 
-These are not automatically relevant to Pokémon Switch RPC. They are listed here to clarify the broader scope of PKHeX.Core. citeturn1search1turn1search2
+These are not automatically relevant to SWITCH RPC. They are listed here to clarify the broader scope of PKHeX.Core. citeturn1search1turn1search2
 
 ---
 
@@ -364,7 +364,7 @@ SaveFile
    └── Extra game-specific slots
 ```
 
-This can eventually allow Pokémon Switch RPC to expose information such as:
+This can eventually allow SWITCH RPC to expose information such as:
 
 - party Pokémon;
 - box contents;
@@ -397,7 +397,7 @@ It handles the Legends: Arceus Pokédex structure and exposes concepts such as:
 - research information;
 - different dex categories. citeturn1search7
 
-This is exactly the kind of abstraction Pokémon Switch RPC should consume.
+This is exactly the kind of abstraction SWITCH RPC should consume.
 
 Instead of:
 
@@ -674,7 +674,7 @@ The bridge should **not**:
 
 This project uses PKHeX.Core strictly as a **read-only save data source**.
 
-Even though PKHeX itself is capable of editing and saving data, Pokémon Switch RPC must not use those capabilities.
+Even though PKHeX itself is capable of editing and saving data, SWITCH RPC must not use those capabilities.
 
 Allowed:
 
@@ -893,7 +893,7 @@ Means PKHeX.Core can identify/read a particular save format.
 
 ### Project save-reader support
 
-Means Pokémon Switch RPC has implemented and verified the fields it needs.
+Means SWITCH RPC has implemented and verified the fields it needs.
 
 ### Project runtime support
 
@@ -914,7 +914,7 @@ Therefore:
 ```text
 PKHeX supports game
         ≠
-Pokémon Switch RPC fully supports game
+SWITCH RPC fully supports game
 ```
 
 ---

@@ -1,6 +1,6 @@
 # TROUBLESHOOTING.md
 
-Troubleshooting guide for **Pokémon Switch RPC**.
+Troubleshooting guide for **SWITCH RPC**.
 
 This document covers common problems involving the Python application, Eden detection, save reading, the C# bridge, PKHeX, and Discord Rich Presence.
 
@@ -78,7 +78,7 @@ python -m pip show pywin32
 Run the application from the repository root:
 
 ```powershell
-cd pokemon-switch-rpc
+cd switch-rpc
 python main.py
 ```
 

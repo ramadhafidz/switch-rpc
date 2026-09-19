@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Pokémon Switch RPC are documented in this file.
+All notable changes to SWITCH RPC are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows [Semantic Versioning](https://semver.org/) where applicable.
 
@@ -115,4 +115,4 @@ Changes should remain under `[Unreleased]` during development. When a release is
 5. Start a fresh `[Unreleased]` section.
 6. Ensure the changelog matches the actual repository state.
 
-[unreleased]: https://github.com/ramadhafidz/pokemon-switch-rpc/compare/HEAD...HEAD
+[unreleased]: https://github.com/ramadhafidz/switch-rpc/compare/HEAD...HEAD

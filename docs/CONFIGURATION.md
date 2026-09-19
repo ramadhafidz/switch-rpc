@@ -2,7 +2,7 @@
 
 ## Overview
 
-Pokémon Switch RPC uses `config.json` as its primary configuration file.
+SWITCH RPC uses `config.json` as its primary configuration file.
 
 Configuration is intentionally kept separate from the application logic so that game-specific Rich Presence settings and runtime behavior can be changed without modifying Python source code.
 

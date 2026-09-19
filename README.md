@@ -242,7 +242,7 @@ PKHeX source is intentionally **not included in this repository**.
 Expected local structure:
 
 ``` text
-pokemon-switch-rpc/
+switch-rpc/
 └── bridge/
     ├── PKHeX/
     │   └── PKHeX.Core/

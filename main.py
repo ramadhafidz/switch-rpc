@@ -53,7 +53,7 @@ def main():
 	last_save_refresh = 0
 	last_pokedex_rotation = 0
 
-	print("Pokémon Switch RPC started.")
+	print("SWITCH RPC started.")
 
 	try:
 		print("Connecting to Discord...")
@@ -227,7 +227,7 @@ def main():
 			time.sleep(1)
 
 	except KeyboardInterrupt:
-		print("\nStopping Pokémon Switch RPC...")
+		print("\nStopping SWITCH RPC...")
 
 	finally:
 		rpc.clear()
