@@ -1,16 +1,16 @@
 # DISCORD-RPC.md
 
-Dokumentasi integrasi **Discord Rich Presence** pada SWITCH RPC.
+Documentation of the **Discord Rich Presence** integration in SWITCH RPC.
 
-Dokumen ini menjelaskan bagaimana aplikasi berkomunikasi dengan Discord, struktur wrapper RPC, lifecycle connection, payload Rich Presence, artwork, troubleshooting, dan aturan pengembangan.
+This document explains how the application communicates with Discord, the RPC wrapper structure, the connection lifecycle, the Rich Presence payload, artwork, troubleshooting, and development rules.
 
 ---
 
 ## 1. Overview
 
-SWITCH RPC menggunakan Discord Rich Presence untuk menampilkan status game yang sedang dimainkan.
+SWITCH RPC uses Discord Rich Presence to display the status of the game currently being played.
 
-Alur sederhananya:
+The simplified flow:
 
 ```text
 Eden
@@ -30,53 +30,53 @@ Discord IPC
 Discord Desktop
 ```
 
-Aplikasi tidak memanggil object library Discord dari seluruh project. Integrasi Discord dibungkus oleh:
+The application does not call Discord library objects from every project. The Discord integration is wrapped by:
 
 ```text
 src/SwitchRpc.Discord/PresenceClient.cs
 ```
 
-Tujuannya menjaga dependency Discord tetap terisolasi — hanya project ini yang menyentuh tipe library Discord.
+The goal is to keep the Discord dependency isolated — only this project touches the Discord library types.
 
 ---
 
 ## 2. Technology
 
-Komponen RPC saat ini:
+Current RPC components:
 
 - Discord Desktop
 - Discord Rich Presence / RPC
-- Library **DiscordRichPresence** (NuGet, oleh Lachee)
+- **DiscordRichPresence** library (NuGet, by Lachee)
 - .NET 10
 - Discord IPC
 
-Catatan penting: package NuGet yang benar adalah **`DiscordRichPresence`**; package bernama `DiscordRPC` di NuGet adalah library lain yang berbeda. Namespace kode tetap `DiscordRPC`.
+Important note: the correct NuGet package is **`DiscordRichPresence`**; the package named `DiscordRPC` on NuGet is a different library. The code namespace remains `DiscordRPC`.
 
-Dokumentasi dependency dan API harus diverifikasi terhadap versi yang benar-benar digunakan (dokumentasi XML ikut terdistribusi bersama package).
+Dependency and API documentation must be verified against the version actually in use (XML documentation ships with the package).
 
 ---
 
 ## 3. Discord Application
 
-Rich Presence membutuhkan Discord Application.
+Rich Presence requires a Discord Application.
 
-Application menyediakan:
+The application provides:
 
 - Client/Application ID;
 - Rich Presence assets;
-- konfigurasi aplikasi Discord.
+- the Discord application configuration.
 
-Client ID digunakan oleh aplikasi untuk membuka koneksi RPC, dimuat dari `config.json`.
+The Client ID is used by the application to open the RPC connection and is loaded from `config.json`.
 
-Jangan memasukkan token Discord atau credential privat ke konfigurasi repository.
+Do not put Discord tokens or private credentials into the repository configuration.
 
-Client/Application ID sendiri bukan secret seperti password atau token, tetapi tetap sebaiknya dikonfigurasi secara sadar.
+The Client/Application ID itself is not a secret like a password or token, but it should still be configured deliberately.
 
 ---
 
 ## 4. RPC Wrapper
 
-File utama:
+Main file:
 
 ```text
 src/SwitchRpc.Discord/PresenceClient.cs
@@ -88,7 +88,7 @@ Class:
 PresenceClient
 ```
 
-Wrapper menangani:
+The wrapper handles:
 
 ```text
 Connect()
@@ -117,7 +117,7 @@ Dispose()
 Disconnected
 ```
 
-Connection state dilacak melalui event library (`OnReady`, `OnClose`, `OnConnectionFailed`, `OnError`), bukan hanya dari hasil `Connect()`.
+Connection state is tracked through the library's events (`OnReady`, `OnClose`, `OnConnectionFailed`, `OnError`), not only from the `Connect()` result.
 
 ---
 
@@ -125,9 +125,9 @@ Connection state dilacak melalui event library (`OnReady`, `OnClose`, `OnConnect
 
 ### Connect
 
-Aplikasi tidak membuat connection baru pada setiap polling cycle.
+The application does not create a new connection on every polling cycle.
 
-Connection dibuat ketika diperlukan, dan gagalnya koneksi tidak membuat aplikasi berhenti:
+A connection is created when needed, and a failed connection does not stop the application:
 
 ```text
 Application starts
@@ -145,31 +145,31 @@ reconnect attempt
 
 ### Reconnect
 
-Setelah pipa IPC mati (misalnya Discord ditutup di tengah jalan), library tetap menandai dirinya sebagai initialized. Karena itu `Connect()` memanggil `Deinitialize()` sebelum `Initialize()` lagi.
+After the IPC pipe dies (for example, Discord is closed mid-session), the library still marks itself as initialized. `Connect()` therefore calls `Deinitialize()` before `Initialize()` again.
 
-`SetPresence` bersifat fire-and-forget — ia hanya mengantre pesan. Kegagalan pipa terdeteksi secara asinkron lewat event, jadi ada jeda beberapa detik antara Discord ditutup dan status wrapper berubah.
+`SetPresence` is fire-and-forget — it only enqueues a message. Pipe failure is detected asynchronously through events, so there is a delay of a few seconds between Discord closing and the wrapper's status changing.
 
 ---
 
 ## 6. Elapsed Time
 
-RPC menggunakan timestamp start untuk menampilkan elapsed session time.
+The RPC uses a start timestamp to display elapsed session time.
 
-Timestamp disimpan saat connect pertama berhasil dan **dipertahankan** saat reconnect — timer di Discord tidak ikut reset ketika koneksi sempat terputus.
+The timestamp is stored when the first connect succeeds and is **preserved** across reconnects — the timer in Discord does not reset when the connection drops.
 
-Timestamp tersebut dikirim pada setiap update melalui `Timestamps`.
+The timestamp is sent on every update through `Timestamps`.
 
-Catatan:
+Notes:
 
-- timestamp berasal dari runtime aplikasi;
-- restart aplikasi akan membuat session timestamp baru;
-- perpindahan game dapat memerlukan keputusan terpisah mengenai apakah timer harus reset.
+- the timestamp comes from application runtime;
+- restarting the application creates a new session timestamp;
+- switching games may require a separate decision about whether the timer should reset.
 
 ---
 
 ## 7. Rich Presence Payload
 
-Payload saat ini memiliki konsep:
+The current payload concepts:
 
 ```text
 details
@@ -179,7 +179,7 @@ large_text
 timestamps
 ```
 
-Contoh tampilan:
+Example display:
 
 ```text
 Details:
@@ -192,13 +192,13 @@ Artwork:
 scarlet (tooltip "Pokémon Scarlet")
 ```
 
-Artinya:
+Meaning:
 
 ```text
-details      → konteks aktivitas
-state        → informasi tambahan (halaman Pokédex)
-large_image  → artwork game
-large_text   → tooltip artwork
+details      → activity context
+state        → additional information (Pokédex page)
+large_image  → game artwork
+large_text   → artwork tooltip
 timestamps   → elapsed session time
 ```
 
@@ -206,7 +206,7 @@ timestamps   → elapsed session time
 
 ## 8. Data Source
 
-Data yang ditampilkan berasal dari `GameState`, dibentuk oleh `PresenceFormatter` di `SwitchRpc.Core`:
+The displayed data comes from `GameState`, shaped by `PresenceFormatter` in `SwitchRpc.Core`:
 
 ```text
 Save Reader
@@ -218,17 +218,17 @@ PresenceFormatter
 RPC payload
 ```
 
-Jangan hardcode nama game, artwork, atau data save di dalam wrapper RPC.
+Do not hardcode game names, artwork, or save data inside the RPC wrapper.
 
-RPC wrapper seharusnya menerima data yang akan ditampilkan, bukan menentukan game apa yang sedang dimainkan.
+The RPC wrapper should receive the data to display, not decide which game is being played.
 
 ---
 
 ## 9. Artwork
 
-Artwork disimpan sebagai Discord Rich Presence asset.
+Artwork is stored as Discord Rich Presence assets.
 
-Game configuration menentukan key artwork:
+The game configuration determines the artwork key:
 
 ```json
 {
@@ -239,7 +239,7 @@ Game configuration menentukan key artwork:
 }
 ```
 
-Contoh key:
+Example keys:
 
 ```text
 arceus
@@ -248,27 +248,27 @@ violet
 za
 ```
 
-Key tersebut harus cocok dengan asset yang tersedia pada Discord Application.
+The keys must match the assets available on the Discord Application.
 
-Jika asset key tidak cocok, artwork tidak akan ditampilkan sesuai harapan.
+If an asset key does not match, the artwork will not display as expected.
 
 ### Artwork Naming
 
-Gunakan nama asset yang:
+Use asset names that are:
 
-- sederhana;
-- stabil;
-- lowercase jika memungkinkan;
-- tidak bergantung pada filename lokal;
-- tidak berubah hanya karena perubahan display name.
+- simple;
+- stable;
+- lowercase when possible;
+- independent of local filenames;
+- unchanged by display name changes.
 
-Jangan menggunakan path lokal — artwork Discord disimpan pada Discord Application, bukan pada filesystem project.
+Do not use local paths — Discord artwork is stored on the Discord Application, not in the project's filesystem.
 
 ---
 
 ## 10. Update Interval
 
-Dua interval dikonfigurasi melalui `config.json`:
+Two intervals are configured through `config.json`:
 
 ```json
 {
@@ -279,68 +279,68 @@ Dua interval dikonfigurasi melalui `config.json`:
 }
 ```
 
-- `save_refresh_interval` — seberapa sering save dibaca ulang;
-- `pokedex_rotation_interval` — seberapa sering halaman Pokédex berganti.
+- `save_refresh_interval` — how often the save is re-read;
+- `pokedex_rotation_interval` — how often the Pokédex page rotates.
 
-Per tick, loop melakukan:
+Each tick, the loop:
 
 ```text
-detect Eden + game
+detects Eden + game
     ↓
-read/save refresh bila jatuh tempo
+refreshes the save when due
     ↓
-rotate dex page bila jatuh tempo
+rotates the dex page when due
     ↓
-update RPC bila tampilan berubah
+updates the RPC when the display changed
     ↓
-wait
+waits
 ```
 
-Interval yang terlalu kecil dapat menyebabkan filesystem scan berlebihan, save parsing terlalu sering, dan RPC update terlalu sering.
+Intervals that are too small can cause excessive filesystem scans, overly frequent save parsing, and overly frequent RPC updates.
 
 ---
 
 ## 11. Update Only When Needed
 
-Application sebaiknya tidak melakukan update Discord tanpa alasan.
+The application should not update Discord without a reason.
 
-Contoh perubahan penting:
+Examples of meaningful changes:
 
 ```text
-No game  →  Scarlet    → RPC perlu di-update
-Scarlet  →  No game    → RPC perlu di-clear
-Paldea: 22/400  →  Kitakami: 3/200    → RPC perlu di-update
+No game  →  Scarlet    → RPC needs an update
+Scarlet  →  No game    → RPC needs clearing
+Paldea: 22/400  →  Kitakami: 3/200    → RPC needs an update
 ```
 
-Aplikasi membandingkan tampilan berikutnya dengan yang terakhir terkirim; update hanya dikirim saat ada perbedaan.
+The application compares the next display against the last one sent; updates are only sent when there is a difference.
 
 ---
 
-## 12. Clear RPC
+## 12. Clearing RPC
 
-Ketika game berhenti, RPC harus dibersihkan.
+When the game stops, the RPC must be cleared.
 
 ```csharp
 _rpc.Clear();
 ```
 
-Ini penting agar Discord tidak terus menampilkan game setelah game sudah ditutup.
+This matters so Discord does not keep showing the game after it has been closed.
 
-Saat aplikasi sendiri dihentikan, blok `finally` juga harus membersihkan RPC sebelum `Dispose()`.
+When the application itself shuts down, the `finally` block must also clear the RPC before `Dispose()`.
 
 ### Clear vs Dispose
 
-Keduanya memiliki tujuan berbeda.
+They have different purposes.
 
 ### `Clear()`
 
-Menghapus Rich Presence aktif.
+Removes the active Rich Presence.
 
 ### `Dispose()`
 
-Menutup koneksi RPC dan melepaskan resource.
+Closes the RPC connection and releases resources.
 
-Urutan shutdown:
+Shutdown order:
 
 ```text
 Clear()
@@ -352,127 +352,127 @@ Dispose()
 
 ## 13. Error Handling
 
-RPC wrapper harus menangani error eksternal.
+The RPC wrapper must handle external errors.
 
-Contoh kegagalan:
+Examples of failures:
 
-- Discord tidak berjalan;
+- Discord not running;
 - IPC unavailable;
 - connection dropped;
-- payload ditolak;
+- payload rejected;
 - Discord RPC error.
 
-Application sebaiknya tetap berjalan jika RPC gagal — kegagalan di-log dan status koneksi diperbarui, lalu update berikutnya mencoba reconnect.
+The application should keep running if the RPC fails — the failure is logged, the connection status is updated, and the next update attempts to reconnect.
 
-Namun jangan menggunakan exception handling untuk menyembunyikan programming error tanpa logging.
+However, do not use exception handling to hide programming errors without logging.
 
 ---
 
 ## 14. Discord IPC
 
-Discord Desktop menyediakan IPC endpoint (named pipe) yang digunakan oleh library RPC.
+Discord Desktop provides an IPC endpoint (named pipe) used by the RPC library.
 
-Developer tidak perlu membuat named pipe/IPC protocol sendiri selama library menyediakan abstraction yang dibutuhkan.
+Developers do not need to create their own named pipe/IPC protocol as long as the library provides the required abstraction.
 
-Jika IPC troubleshooting diperlukan, periksa environment Discord dan dokumentasi library sebelum membuat implementasi custom.
+If IPC troubleshooting is needed, check the Discord environment and the library documentation before writing a custom implementation.
 
 ---
 
 ## 15. Testing RPC
 
-Testing minimal:
+Minimal testing:
 
-### Test 1 — Discord tersedia
+### Test 1 — Discord available
 
-1. Buka Discord Desktop.
-2. Jalankan aplikasi.
-3. Pastikan connection berhasil.
-4. Jalankan Eden.
-5. Jalankan game.
-6. Periksa Rich Presence.
+1. Open Discord Desktop.
+2. Run the application.
+3. Confirm the connection succeeds.
+4. Start Eden.
+5. Start a game.
+6. Check the Rich Presence.
 
-### Test 2 — Game berhenti
+### Test 2 — Game stops
 
-1. RPC sedang aktif.
-2. Tutup game.
-3. Pastikan detector tidak lagi menemukan game.
-4. Pastikan RPC di-clear.
+1. RPC is active.
+2. Close the game.
+3. Confirm the detector no longer finds the game.
+4. Confirm the RPC is cleared.
 
 ### Test 3 — Discord restart
 
-1. Jalankan application.
-2. Pastikan RPC aktif.
-3. Tutup Discord (quit, bukan minimize).
-4. Amati `Discord RPC disconnected. Reconnecting...` dan kegagalan sementara.
-5. Buka Discord kembali.
-6. Pastikan application reconnect dan presence kembali dengan timer yang tidak reset.
+1. Run the application.
+2. Confirm the RPC is active.
+3. Close Discord (quit, not minimize).
+4. Observe `Discord RPC disconnected. Reconnecting...` and temporary failures.
+5. Reopen Discord.
+6. Confirm the application reconnects and the presence returns with an unreset timer.
 
-### Test 4 — Ganti game
+### Test 4 — Switching games
 
-1. Jalankan game A.
-2. Pastikan RPC menampilkan game A.
-3. Tutup game A.
-4. Jalankan game B.
-5. Pastikan RPC berubah ke game B.
+1. Run game A.
+2. Confirm the RPC shows game A.
+3. Close game A.
+4. Run game B.
+5. Confirm the RPC switches to game B.
 
 ---
 
 ## 16. Debugging Checklist
 
-Jika RPC tidak muncul:
+If the RPC does not appear:
 
 ### Discord
 
-- [ ] Discord Desktop sedang berjalan.
-- [ ] User login ke Discord.
-- [ ] Discord Application tersedia.
-- [ ] Client ID benar.
+- [ ] Discord Desktop is running.
+- [ ] The user is logged in to Discord.
+- [ ] The Discord Application exists.
+- [ ] The Client ID is correct.
 
 ### Application
 
-- [ ] `Connect()` berhasil.
+- [ ] `Connect()` succeeded.
 - [ ] `IsConnected == true`.
-- [ ] game terdeteksi.
-- [ ] `Update()` berhasil.
+- [ ] The game is detected.
+- [ ] `Update()` succeeded.
 
 ### Artwork
 
-- [ ] asset tersedia di Discord Application.
-- [ ] asset key sama dengan `large_image`.
-- [ ] artwork sudah selesai diproses Discord.
+- [ ] The asset exists on the Discord Application.
+- [ ] The asset key matches `large_image`.
+- [ ] Discord has finished processing the artwork.
 
 ---
 
-## 17. Common Failure: RPC Tidak Connect
+## 17. Common Failure: RPC Does Not Connect
 
-Gejala:
+Symptom:
 
 ```text
 Failed to connect to Discord.
 ```
 
-Periksa:
+Check:
 
 1. Discord Desktop;
 2. Client ID;
 3. IPC;
 4. application configuration.
 
-Jangan langsung mengubah code connection sebelum memastikan environment Discord normal.
+Do not change the connection code before confirming the Discord environment is healthy.
 
 ---
 
-## 18. Common Failure: RPC Connect Tetapi Tidak Tampil
+## 18. Common Failure: RPC Connects But Does Not Display
 
-Kemungkinan:
+Possibilities:
 
-- game belum terdeteksi;
-- update belum dipanggil;
-- payload gagal;
-- Discord application salah;
-- artwork key salah.
+- the game has not been detected;
+- an update has not been sent;
+- the payload failed;
+- the Discord application is wrong;
+- the artwork key is wrong.
 
-Lihat log:
+Look at the log:
 
 ```text
 Discord RPC connected.
@@ -480,23 +480,23 @@ Game detected: Pokémon Scarlet
 Rich Presence updated: Pokédex | Paldea: 22/400
 ```
 
-Jika `Rich Presence updated.` muncul tetapi artwork bermasalah, fokuskan debugging pada asset configuration, bukan connection.
+If `Rich Presence updated.` appears but the artwork is broken, focus debugging on the asset configuration, not the connection.
 
 ---
 
-## 19. Common Failure: Timer Tidak Sesuai
+## 19. Common Failure: Timer Does Not Match
 
-Timer menggunakan timestamp dari koneksi RPC pertama.
+The timer uses the timestamp from the first RPC connection.
 
-Timestamp dipertahankan lintas reconnect, sehingga durasi yang tampil adalah durasi sesi aplikasi berjalan.
+The timestamp is preserved across reconnects, so the displayed duration is the duration of the running application session.
 
-Jika perilaku ini ingin diubah (misalnya timer per game), keputusan itu adalah bagian dari application/session state di `AppLoop`, bukan tanggung jawab wrapper Discord.
+If this behavior should change (for example, a per-game timer), that decision belongs to the application/session state in `AppLoop`, not to the Discord wrapper.
 
 ---
 
-## 20. Jangan Masukkan Game Logic ke RPC
+## 20. Keep Game Logic Out of RPC
 
-Hindari method atau branch seperti:
+Avoid methods or branches like:
 
 ```csharp
 public void UpdateScarlet() { ... }
@@ -504,9 +504,9 @@ public void UpdateScarlet() { ... }
 if (gameId == "pokemon_scarlet") { ... }
 ```
 
-di dalam wrapper RPC.
+inside the RPC wrapper.
 
-Gunakan:
+Use:
 
 ```text
 Game detection
@@ -518,75 +518,75 @@ Game state
 RPC payload
 ```
 
-RPC hanya bertugas mengirim data.
+The RPC's only job is to send data.
 
 ---
 
 ## 21. API Isolation
 
-Library DiscordRichPresence sebaiknya hanya digunakan di:
+The DiscordRichPresence library should only be used in:
 
 ```text
 src/SwitchRpc.Discord/
 ```
 
-Project lain tidak perlu melakukan:
+Other projects should never do:
 
 ```csharp
 using DiscordRPC;
 ```
 
-Dengan isolation ini, jika library diganti di masa depan, perubahan dapat difokuskan pada satu project.
+With this isolation, if the library is replaced in the future, the changes can be focused on a single project.
 
 ---
 
 ## 22. Configuration Rules
 
-Jangan hardcode:
+Do not hardcode:
 
 - Client ID;
-- interval;
-- game display name;
-- region;
-- artwork key.
+- intervals;
+- game display names;
+- regions;
+- artwork keys.
 
-Data tersebut berada di `config.json` — lihat `docs/CONFIGURATION.md`.
+That data lives in `config.json` — see `docs/CONFIGURATION.md`.
 
 ---
 
 ## 23. Development Rules
 
-Saat mengubah Discord RPC:
+When changing Discord RPC:
 
-- gunakan wrapper yang sudah ada;
-- jangan menyebarkan library Discord ke project lain;
-- cek dokumentasi versi dependency;
-- pertahankan reconnect behavior;
-- pertahankan shutdown cleanup;
-- jangan membuat connection pada setiap polling cycle;
-- jangan memasukkan game-specific logic ke RPC wrapper;
-- test Discord Desktop secara nyata.
+- use the existing wrapper;
+- do not spread the Discord library into other projects;
+- check the documentation for the dependency version in use;
+- preserve the reconnect behavior;
+- preserve the shutdown cleanup;
+- do not create a connection on every polling cycle;
+- do not put game-specific logic into the RPC wrapper;
+- test against a real Discord Desktop.
 
 ---
 
 ## 24. Security
 
-Jangan menyimpan:
+Do not store:
 
-- Discord token;
-- user token;
+- Discord tokens;
+- user tokens;
 - private credentials;
 - secret API keys;
 
-di source code atau repository.
+in source code or the repository.
 
-Client/Application ID bukan credential login Discord, tetapi tetap jangan menambahkan credential lain secara sembarangan.
+The Client/Application ID is not a Discord login credential, but still do not add other credentials carelessly.
 
 ---
 
 ## 25. Future RPC Features
 
-Fitur yang dapat ditambahkan:
+Features that could be added:
 
 - party Pokémon;
 - current map;
@@ -595,12 +595,12 @@ Fitur yang dapat ditambahkan:
 - dynamic artwork;
 - trainer name.
 
-Setiap fitur harus:
+Every feature must:
 
-1. memiliki sumber data yang jelas;
-2. berasal dari save reader atau runtime source yang terverifikasi;
-3. dimasukkan ke `GameState`;
-4. kemudian dipetakan ke RPC.
+1. have a clear data source;
+2. come from a verified save reader or runtime source;
+3. be added to `GameState`;
+4. then be mapped to RPC.
 
 ---
 
@@ -620,10 +620,10 @@ Setiap fitur harus:
 
 ## 27. Reference
 
-Dokumentasi eksternal yang relevan:
+Relevant external documentation:
 
 - Discord Rich Presence documentation
-- DiscordRichPresence library documentation (XML docs terdistribusi bersama package)
+- DiscordRichPresence library documentation (XML docs ship with the package)
 - Discord IPC documentation
 
-Selalu gunakan dokumentasi yang sesuai dengan versi dependency yang sedang digunakan.
+Always use documentation matching the version of the dependency in use.

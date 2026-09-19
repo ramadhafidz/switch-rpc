@@ -1,26 +1,26 @@
 # DEVELOPMENT.md
 
-Panduan pengembangan untuk **SWITCH RPC**.
+Development guide for **SWITCH RPC**.
 
-Dokumen ini menjelaskan workflow development, struktur kode, cara menjalankan komponen, testing, debugging, dan aturan praktis ketika menambahkan atau mengubah fitur.
+This document describes the development workflow, code structure, how to run components, testing, debugging, and practical rules when adding or changing features.
 
 ---
 
-## 1. Tujuan Dokumen
+## 1. Purpose of This Document
 
-Gunakan dokumen ini sebagai panduan ketika:
+Use this document as a guide when:
 
-- menyiapkan environment development;
-- menjalankan aplikasi secara lokal;
-- mengembangkan detector, save reader, atau Discord RPC;
-- menambahkan dukungan game baru;
-- menjalankan test dan debugging;
-- memperbarui dependency;
-- memeriksa perubahan sebelum commit.
+- setting up the development environment;
+- running the application locally;
+- developing the detector, save readers, or Discord RPC;
+- adding support for a new game;
+- running tests and debugging;
+- updating dependencies;
+- reviewing changes before a commit.
 
-Untuk aturan yang harus diikuti oleh AI coding agent, lihat `AGENTS.md`.
+For rules that AI coding agents must follow, see `AGENTS.md`.
 
-Dokumentasi arsitektur tersedia di:
+Architecture documentation is available in:
 
 - `docs/ARCHITECTURE.md`
 - `docs/SAVE-READER.md`
@@ -30,9 +30,9 @@ Dokumentasi arsitektur tersedia di:
 
 ---
 
-## 2. Prasyarat
+## 2. Prerequisites
 
-Environment utama proyek saat ini adalah:
+The project's primary environment is currently:
 
 - Windows 11
 - .NET SDK 10+
@@ -40,18 +40,18 @@ Environment utama proyek saat ini adalah:
 - Nintendo Switch Eden emulator
 - Git
 
-Komponen yang membutuhkan environment Windows:
+Components that require a Windows environment:
 
 - Eden process detection;
 - window title detection;
 - Discord IPC;
-- pengujian runtime dengan game berjalan.
+- runtime testing with a running game.
 
 ---
 
-## 3. Setup Repository
+## 3. Repository Setup
 
-Clone repository:
+Clone the repository:
 
 ```powershell
 git clone <repository-url>
@@ -62,9 +62,9 @@ cd switch-rpc
 
 ## 4. PKHeX Local Setup
 
-Source PKHeX digunakan sebagai dependency lokal dan di-referensikan langsung oleh project `SwitchRpc.Games.Pokemon`.
+The PKHeX source is used as a local dependency and is referenced directly by the `SwitchRpc.Games.Pokemon` project.
 
-Struktur yang diharapkan:
+Expected structure:
 
 ```text
 bridge/
@@ -72,46 +72,53 @@ bridge/
     └── PKHeX.Core/
 ```
 
-PKHeX **tidak disimpan sebagai bagian dari repository utama** dan harus tetap di-ignore oleh Git.
+PKHeX **is not stored as part of the main repository** and must remain ignored by Git.
 
-Letakkan source PKHeX di `bridge/PKHeX/` sehingga ProjectReference berikut dapat di-resolve:
+Place the PKHeX source in `bridge/PKHeX/` so the following ProjectReference resolves:
 
 ```text
 src/SwitchRpc.Games.Pokemon/SwitchRpc.Games.Pokemon.csproj
   → ..\..\bridge\PKHeX\PKHeX.Core\PKHeX.Core.csproj
 ```
 
----
+Clone PKHeX at the pinned revision — CI uses the same revision:
 
-## 5. Dokumentasi Dependency
-
-Ketika membutuhkan dokumentasi library, framework, SDK, atau tool eksternal:
-
-1. periksa source lokal yang benar-benar di-build;
-2. dokumentasi resmi;
-3. sumber teknis terpercaya lainnya.
-
-Untuk PKHeX, source code lokal adalah referensi penting. Jika dokumentasi eksternal berbeda dengan versi yang digunakan, prioritaskan API yang benar-benar tersedia pada source lokal.
-
-**Jangan mengarang API, property, offset save, atau struktur data.**
+```powershell
+git clone https://github.com/kwsch/PKHeX.git bridge/PKHeX
+git -C bridge/PKHeX checkout 8ad201e80244f630ab5a46922ab72fb79c5ad4f4
+```
 
 ---
 
-## 6. Build dan Menjalankan Aplikasi
+## 5. Dependency Documentation
 
-Build seluruh solusi:
+When documentation for a library, framework, SDK, or external tool is needed:
+
+1. check the local source that is actually built;
+2. official documentation;
+3. other trusted technical sources.
+
+For PKHeX, the local source code is the key reference. If external documentation differs from the version in use, prioritize the API that is actually available in the local source.
+
+**Do not invent APIs, properties, save offsets, or data structures.**
+
+---
+
+## 6. Building and Running the Application
+
+Build the entire solution:
 
 ```powershell
 dotnet build SwitchRpc.slnx
 ```
 
-Jalankan aplikasi:
+Run the application:
 
 ```powershell
 dotnet run --project src/SwitchRpc.App
 ```
 
-Output normal kira-kira:
+Normal output looks roughly like:
 
 ```text
 SWITCH RPC started.
@@ -123,21 +130,33 @@ Save data refreshed.
 Rich Presence updated: Pokédex | Paldea: 22/400
 ```
 
-Aplikasi berjalan sebagai polling loop dan memeriksa status Eden secara berkala. Interval diatur melalui `config.json`.
+The application runs as a polling loop and checks Eden's status periodically. The interval is configured through `config.json`.
 
-### Mode Diagnose
+### Diagnose Mode
 
-Menjalankan seluruh pipeline satu kali tanpa membutuhkan Eden atau Discord, dan mencetak metrik pipeline (dipakai untuk `docs/BENCHMARKS.md`):
+Runs the whole pipeline once without requiring Eden or Discord, and prints pipeline metrics (used for `docs/BENCHMARKS.md`):
 
 ```powershell
 dotnet run --project src/SwitchRpc.App --no-build -- --diagnose
 ```
 
+### Distributable Build (Single-File)
+
+Builds a single executable for distribution (self-contained — no .NET installation required on the target machine):
+
+```powershell
+dotnet publish src/SwitchRpc.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true
+```
+
+Output lands in `src/SwitchRpc.App/bin/Release/net10.0/win-x64/publish/SwitchRpc.App.exe`.
+
+Before distributing, place `config.json` next to the executable (or in one of its parent folders) — the application searches the working directory and the application directory. The currently targeted platform is `win-x64` only.
+
 ---
 
 ## 7. Development Workflow
 
-Workflow yang disarankan:
+Recommended workflow:
 
 ```text
 Understand
@@ -159,93 +178,93 @@ Update documentation
 Commit
 ```
 
-Jangan langsung melakukan refactor besar ketika masalah dapat diselesaikan dengan perubahan kecil.
+Do not jump into a large refactor when a small change can solve the problem.
 
 ---
 
-## 8. Struktur Project
+## 8. Project Structure
 
-| Project | Tanggung jawab |
+| Project | Responsibility |
 |---|---|
-| `src/SwitchRpc.Core` | `GameState`, `DexStats`, `GameDefinition`, presence formatting — tanpa dependency |
-| `src/SwitchRpc.Games.Pokemon` | Save reader Pokémon (PKHeX) di balik facade `PokemonSaveReader` |
-| `src/SwitchRpc.Emulators.Eden` | Deteksi proses/window Eden dan lokasi save |
-| `src/SwitchRpc.Discord` | Wrapper Discord Rich Presence |
-| `src/SwitchRpc.App` | Host console: loop, konfigurasi, diagnose |
-| `tests/SwitchRpc.Tests` | Test xUnit |
+| `src/SwitchRpc.Core` | `GameState`, `DexStats`, `GameDefinition`, presence formatting — no dependencies |
+| `src/SwitchRpc.Games.Pokemon` | Pokémon (PKHeX) save readers behind the `PokemonSaveReader` facade |
+| `src/SwitchRpc.Emulators.Eden` | Eden process/window detection and save location |
+| `src/SwitchRpc.Discord` | Discord Rich Presence wrapper |
+| `src/SwitchRpc.App` | Console host: loop, configuration, diagnostics |
+| `tests/SwitchRpc.Tests` | xUnit tests |
 
-Aturan dependency yang ditegakkan:
+Enforced dependency rules:
 
-- `SwitchRpc.Core` tidak mereferensikan apa pun;
-- hanya `SwitchRpc.Games.Pokemon` yang menyentuh PKHeX;
-- hanya `SwitchRpc.Discord` yang menyentuh library Discord;
-- definisi game dimuat dari `config.json`.
+- `SwitchRpc.Core` references nothing;
+- only `SwitchRpc.Games.Pokemon` touches PKHeX;
+- only `SwitchRpc.Discord` touches the Discord library;
+- game definitions are loaded from `config.json`.
 
 ---
 
 ## 9. C# Coding Rules
 
-### Indentasi
+### Indentation
 
-Gunakan **tab** untuk indentasi (mengikuti kode yang ada).
+Use **tabs** for indentation (matching the existing code).
 
 ### General Rules
 
-- PascalCase untuk type dan member, camelCase untuk lokal;
-- record untuk data immutable (`GameState`, `GameDefinition`);
-- fitur modern C# ketika sesuai (collection expressions, pattern matching);
-- hindari hardcoded path milik developer;
-- exception handling pada boundary eksternal;
-- jangan menelan error secara diam-diam jika error tersebut penting untuk debugging;
-- pertahankan project tetap kecil dan fokus.
+- PascalCase for types and members, camelCase for locals;
+- records for immutable data (`GameState`, `GameDefinition`);
+- modern C# features when appropriate (collection expressions, pattern matching);
+- avoid hardcoded developer-specific paths;
+- exception handling at external boundaries;
+- do not silently swallow errors that matter for debugging;
+- keep projects small and focused.
 
 ---
 
 ## 10. Save Reader Development
 
-Save reader adalah bagian yang paling sensitif terhadap perubahan format game.
+Save readers are the part most sensitive to game format changes.
 
-Aturan utama:
+Core rules:
 
 - read-only;
-- jangan menulis kembali save;
-- jangan mengubah save;
-- jangan menebak offset;
-- jangan menebak struktur binary;
-- gunakan abstraction PKHeX jika tersedia;
-- verifikasi dengan save nyata;
-- dokumentasikan hasil verifikasi.
+- never write the save back;
+- never modify the save;
+- never guess offsets;
+- never guess binary structures;
+- use PKHeX abstractions when available;
+- verify against real saves;
+- document verification results.
 
-Semua interaksi PKHeX harus tetap di dalam `SwitchRpc.Games.Pokemon`, di balik facade `PokemonSaveReader`. Hasil akhirnya adalah `GameState` yang ternormalisasi — tipe PKHeX tidak boleh menyeberang keluar project ini.
+All PKHeX interaction must stay inside `SwitchRpc.Games.Pokemon`, behind the `PokemonSaveReader` facade. The end result is a normalized `GameState` — PKHeX types must not cross out of this project.
 
-Untuk detail, lihat `docs/SAVE-READER.md`.
+For details, see `docs/SAVE-READER.md`.
 
 ---
 
-## 11. Menambahkan Data Save Baru
+## 11. Adding New Save Data
 
-Jika ingin menambahkan field baru:
+To add a new field:
 
-### Langkah 1 — Cari abstraction
+### Step 1 — Look for an abstraction
 
-Cari apakah PKHeX sudah menyediakan property, save block, accessor, helper, enum, atau method yang sesuai.
+Check whether PKHeX already provides a matching property, save block, accessor, helper, enum, or method.
 
-### Langkah 2 — Verifikasi source
+### Step 2 — Verify the source
 
-Pastikan API tersebut tersedia pada versi PKHeX yang sedang digunakan (`bridge/PKHeX/`).
+Make sure the API exists in the PKHeX version in use (`bridge/PKHeX/`).
 
-### Langkah 3 — Tambahkan ke reader
+### Step 3 — Add it to the reader
 
-Tambahkan ekstraksi di `SvSaveReader` / `PlaSaveReader` (atau reader game lain), lalu petakan ke `GameState`.
+Add the extraction in `SvSaveReader` / `PlaSaveReader` (or another game's reader), then map it into `GameState`.
 
-### Langkah 4 — Build dan Test
+### Step 4 — Build and Test
 
 ```powershell
 dotnet build SwitchRpc.slnx
 dotnet test SwitchRpc.slnx
 ```
 
-### Langkah 5 — Verifikasi dengan save nyata
+### Step 5 — Verify with a real save
 
 ```powershell
 dotnet run --project src/SwitchRpc.App --no-build -- --diagnose
@@ -255,19 +274,19 @@ dotnet run --project src/SwitchRpc.App --no-build -- --diagnose
 
 ## 12. Game Detection Development
 
-Detector menggunakan:
+The detector uses:
 
 1. process detection (`Process.GetProcessesByName("eden")`);
-2. window title Eden (Win32 `EnumWindows`);
-3. pencocokan judul window terhadap nama game dari `config.json`.
+2. the Eden window title (Win32 `EnumWindows`);
+3. matching the window title against game names from `config.json`.
 
-Jika menambahkan game baru:
+When adding a new game:
 
-- tambahkan konfigurasi game (`name`, `title_id`, artwork);
-- gunakan stable internal ID;
-- verifikasi dengan Eden yang benar-benar menjalankan game tersebut.
+- add the game configuration (`name`, `title_id`, artwork);
+- use a stable internal ID;
+- verify with Eden actually running that game.
 
-Contoh ID:
+Example IDs:
 
 ```text
 pokemon_legends_arceus
@@ -280,25 +299,25 @@ pokemon_legends_za
 
 ## 13. Discord RPC Development
 
-Discord RPC harus tetap menjadi layer terpisah.
+Discord RPC must remain a separate layer.
 
-`PresenceClient` bertanggung jawab untuk:
+`PresenceClient` is responsible for:
 
-- connect;
-- update;
-- clear;
-- dispose;
-- melacak status koneksi melalui event library (`OnReady`, `OnClose`, `OnConnectionFailed`, `OnError`);
-- deinitialize + initialize ulang saat reconnect.
+- connecting;
+- updating;
+- clearing;
+- disposing;
+- tracking connection state through the library's events (`OnReady`, `OnClose`, `OnConnectionFailed`, `OnError`);
+- deinitializing and reinitializing on reconnect.
 
-Game logic tidak boleh bergantung langsung pada tipe library Discord.
+Game logic must not depend directly on Discord library types.
 
-Jika library berubah:
+If the library changes:
 
-1. cek dokumentasi versi yang digunakan;
-2. cek source/package;
-3. ubah wrapper `PresenceClient`;
-4. hindari menyebarkan API library ke seluruh project.
+1. check the documentation for the version in use;
+2. check the source/package;
+3. change the `PresenceClient` wrapper;
+4. avoid spreading the library API across other projects.
 
 ---
 
@@ -308,107 +327,107 @@ Jika library berubah:
 dotnet test SwitchRpc.slnx
 ```
 
-Test xUnit berada di `tests/SwitchRpc.Tests`.
+The xUnit tests live in `tests/SwitchRpc.Tests`.
 
-Cakupan saat ini:
+Current coverage:
 
-- `PresenceFormatterTests` — format halaman Pokédex;
-- `SvSaveReaderTests` / `PlaSaveReaderTests` — reader terhadap save blank PKHeX (in-memory);
-- `PokemonSaveReaderTests` — identifikasi file dan hasil untuk format yang tidak didukung;
-- `EdenSaveLocatorTests` — resolusi path save dengan root yang di-inject.
+- `PresenceFormatterTests` — Pokédex page formatting;
+- `SvSaveReaderTests` / `PlaSaveReaderTests` — readers against blank PKHeX saves (in-memory);
+- `PokemonSaveReaderTests` — file identification and results for unsupported formats;
+- `EdenSaveLocatorTests` — save path resolution with an injected root.
 
-Catatan penting: save blank PKHeX **tidak dapat** di-round-trip melalui `SaveUtil.GetSaveFile` karena identifikasi gen9 menyertakan fingerprint ukuran file on-disk. Karena itu test reader memakai objek `SaveFile` in-memory, sedangkan identifikasi file di-cover oleh test garbage-file dan verifikasi save nyata.
+Important note: blank PKHeX saves **cannot** be round-tripped through `SaveUtil.GetSaveFile` because gen9 identification includes on-disk file size fingerprints. Reader tests therefore use in-memory `SaveFile` objects, while file identification is covered by garbage-file tests and real-save verification.
 
 ### Integration Test
 
-Jalankan:
+Run:
 
 ```powershell
 dotnet run --project src/SwitchRpc.App
 ```
 
-kemudian:
+then:
 
-1. buka Discord;
-2. jalankan Eden;
-3. jalankan salah satu game;
-4. pastikan game terdeteksi;
-5. pastikan RPC muncul dan berotasi;
-6. tutup game;
-7. pastikan RPC dibersihkan.
+1. open Discord;
+2. start Eden;
+3. start one of the games;
+4. confirm the game is detected;
+5. confirm the RPC appears and rotates;
+6. close the game;
+7. confirm the RPC is cleared.
 
 ---
 
-## 15. Save Tanpa Menulis Save
+## 15. Reads Without Writing Saves
 
-Save test harus selalu bersifat read-only.
+Test saves must always remain read-only.
 
-Gunakan copy save jika eksperimen membutuhkan inspeksi tambahan.
+Use a save copy if an experiment needs extra inspection.
 
-Jangan menjalankan kode yang:
+Never run code that:
 
-- memanggil save writer;
-- menyimpan perubahan;
-- memodifikasi byte;
-- mengubah Pokémon;
-- mengubah Pokédex;
-- mengubah progress.
+- calls a save writer;
+- saves changes;
+- modifies bytes;
+- changes Pokémon;
+- changes the Pokédex;
+- changes progress.
 
-Tujuan project adalah membaca state game untuk Rich Presence.
+The project's purpose is to read game state for Rich Presence.
 
 ---
 
 ## 16. Debugging
 
-Gunakan debugging bertahap.
+Debug in stages.
 
-### Eden tidak terdeteksi
+### Eden not detected
 
-Periksa:
+Check:
 
 ```powershell
 Get-Process eden -ErrorAction SilentlyContinue
 ```
 
-### Game tidak terdeteksi
+### Game not detected
 
-Pastikan:
+Make sure:
 
-- Eden sedang berjalan;
-- game benar-benar aktif;
-- window title mengandung nama game yang dikonfigurasi;
-- konfigurasi game di `config.json` benar.
+- Eden is running;
+- the game is actually active;
+- the window title contains the configured game name;
+- the game configuration in `config.json` is correct.
 
-### Discord tidak terhubung
+### Discord not connecting
 
-Periksa:
+Check:
 
-- Discord Desktop sedang berjalan;
-- Client/Application ID benar;
-- Discord IPC tersedia.
+- Discord Desktop is running;
+- the Client/Application ID is correct;
+- Discord IPC is available.
 
-Jangan membuat koneksi RPC baru setiap polling cycle — wrapper menangani reconnect.
+Do not create a new RPC connection every polling cycle — the wrapper handles reconnection.
 
-### Save tidak ditemukan
+### Save not found
 
-Periksa:
+Check:
 
-- Eden save root;
-- `title_id` di `config.json`;
-- folder game;
-- file `main`;
-- permission;
-- apakah game sudah pernah membuat save.
+- the Eden save root;
+- `title_id` in `config.json`;
+- the game folder;
+- the `main` file;
+- permissions;
+- whether the game has ever created a save.
 
-### Save gagal dibaca
+### Save fails to read
 
-Jalankan diagnose:
+Run diagnostics:
 
 ```powershell
 dotnet run --project src/SwitchRpc.App --no-build -- --diagnose
 ```
 
-Pisahkan masalah menjadi:
+Split the problem into:
 
 ```text
 Path
@@ -426,31 +445,31 @@ GameState
 
 ## 17. Dependency Changes
 
-Sebelum mengubah dependency:
+Before changing a dependency:
 
-1. cek versi saat ini;
-2. cek dokumentasi;
-3. cek breaking changes;
-4. cek compatibility;
-5. lakukan perubahan kecil;
-6. jalankan test;
-7. update dokumentasi jika diperlukan.
+1. check the current version;
+2. check the documentation;
+3. check breaking changes;
+4. check compatibility;
+5. make a small change;
+6. run the tests;
+7. update documentation if needed.
 
-Jangan upgrade semua dependency sekaligus tanpa alasan.
+Do not upgrade every dependency at once without a reason.
 
-Gunakan `dotnet --info` untuk membantu reproduksi environment.
+Use `dotnet --info` to help reproduce the environment.
 
 ---
 
 ## 18. Git Workflow
 
-Sebelum commit:
+Before committing:
 
 ```powershell
 git status
 ```
 
-Review perubahan:
+Review changes:
 
 ```powershell
 git diff
@@ -458,31 +477,31 @@ git diff --cached
 git diff --cached --name-only
 ```
 
-Jangan commit:
+Do not commit:
 
 - `bin/`, `obj/`;
-- save file;
+- save files;
 - emulator data;
 - `bridge/PKHeX/`;
-- secret;
+- secrets;
 - local configuration;
-- cache.
+- caches.
 
-Gunakan `.gitignore` sebagai perlindungan tambahan, tetapi tetap review `git status`.
+Use `.gitignore` as extra protection, but still review `git status`.
 
 ---
 
-## 19. Commit
+## 19. Commits
 
-Gunakan commit yang menjelaskan perubahan.
+Write commits that explain the change.
 
-Contoh:
+Example:
 
 ```text
 feat(save-reader): support Legends Z-A saves
 ```
 
-Jenis commit yang dapat digunakan:
+Commit types that may be used:
 
 ```text
 feat:
@@ -493,7 +512,7 @@ test:
 chore:
 ```
 
-Hindari commit seperti:
+Avoid commits like:
 
 ```text
 update
@@ -505,119 +524,119 @@ asdf
 
 ---
 
-## 20. Menambahkan Game Baru
+## 20. Adding a New Game
 
 Workflow:
 
 ```text
-1. Tentukan stable game ID
+1. Decide the stable game ID
         ↓
-2. Tambahkan konfigurasi game (name, title_id, artwork)
+2. Add the game configuration (name, title_id, artwork)
         ↓
-3. Verifikasi deteksi window title
+3. Verify window title detection
         ↓
-4. Verifikasi save location melalui title ID
+4. Verify the save location through the title ID
         ↓
-5. Verifikasi save format
+5. Verify the save format
         ↓
-6. Implementasi save reader (bila format didukung PKHeX)
+6. Implement the save reader (if PKHeX supports the format)
         ↓
-7. Mapping ke GameState
+7. Map into GameState
         ↓
-8. Test save
+8. Test the save
         ↓
 9. Test Eden + Discord RPC
         ↓
 10. Update documentation
 ```
 
-Jangan menyatakan game "supported" hanya karena detector sudah mengenal nama game.
+Never declare a game "supported" merely because the detector recognizes its name.
 
-Detection support dan save-reader support adalah dua hal berbeda.
+Detection support and save-reader support are two different things.
 
 ---
 
 ## 21. Performance
 
-Polling harus tetap ringan.
+Polling must stay lightweight.
 
-Prinsip:
+Principles:
 
-- jangan membaca save setiap detik;
-- jangan membuat process baru tanpa kebutuhan;
-- jangan reconnect Discord secara terus-menerus;
-- gunakan interval konfigurasi;
-- hindari scan filesystem berlebihan;
-- satu process scan per tick (`EdenDetector.Poll()`).
+- do not read the save every second;
+- do not spawn processes without need;
+- do not reconnect to Discord continuously;
+- use configured intervals;
+- avoid excessive filesystem scans;
+- one process scan per tick (`EdenDetector.Poll()`).
 
-Jika save reader membutuhkan waktu cukup lama, jangan menjalankannya lebih sering daripada yang diperlukan untuk memperbarui Rich Presence.
+If the save reader takes a long time, do not run it more often than needed to keep the Rich Presence up to date.
 
 ---
 
-## 22. Privacy dan Security
+## 22. Privacy and Security
 
-Project membaca data lokal dari emulator.
+The project reads local data from the emulator.
 
-Jangan log atau expose data sensitif tanpa kebutuhan.
+Do not log or expose sensitive data without need.
 
-Hindari memasukkan ke repository:
+Avoid putting into the repository:
 
-- save file;
-- trainer ID jika tidak diperlukan;
+- save files;
+- trainer IDs unless required;
 - user-specific absolute paths;
 - Discord credentials;
 - API keys;
 - tokens;
 - environment secrets.
 
-Jika contoh membutuhkan data sensitif, gunakan placeholder.
+If an example needs sensitive data, use a placeholder.
 
 ---
 
-## 23. Checklist Sebelum Pull Request
+## 23. Pre-Pull Request Checklist
 
 ### Code
 
-- [ ] Perubahan sesuai tanggung jawab project.
-- [ ] Tidak ada hardcoded user path.
-- [ ] Tidak ada API yang diada-adakan.
-- [ ] Error handling cukup.
-- [ ] Tidak ada save modification.
+- [ ] Changes match the project's responsibility.
+- [ ] No hardcoded user paths.
+- [ ] No invented APIs.
+- [ ] Error handling is sufficient.
+- [ ] No save modification.
 
 ### Save Reader
 
-- [ ] Format save telah diverifikasi.
-- [ ] API PKHeX telah diverifikasi.
-- [ ] Tidak ada guessed offset.
-- [ ] Save tetap read-only.
-- [ ] Tipe PKHeX tidak keluar dari `SwitchRpc.Games.Pokemon`.
+- [ ] Save format verified.
+- [ ] PKHeX APIs verified.
+- [ ] No guessed offsets.
+- [ ] Save access remains read-only.
+- [ ] PKHeX types stay inside `SwitchRpc.Games.Pokemon`.
 
 ### Runtime
 
-- [ ] Eden detection bekerja.
-- [ ] Game detection bekerja.
-- [ ] Discord RPC bekerja.
-- [ ] RPC dibersihkan ketika game berhenti.
+- [ ] Eden detection works.
+- [ ] Game detection works.
+- [ ] Discord RPC works.
+- [ ] RPC is cleared when the game stops.
 
 ### Git
 
-- [ ] `git status` bersih dari file lokal yang tidak seharusnya di-commit.
-- [ ] Tidak ada save file.
-- [ ] Tidak ada PKHeX source.
-- [ ] Tidak ada build output.
-- [ ] Tidak ada secret.
+- [ ] `git status` is clean of local files that should not be committed.
+- [ ] No save files.
+- [ ] No PKHeX source.
+- [ ] No build output.
+- [ ] No secrets.
 
 ### Documentation
 
-- [ ] README masih akurat.
-- [ ] Dokumentasi terkait sudah diperbarui.
-- [ ] Status game support sesuai implementasi sebenarnya.
+- [ ] README is still accurate.
+- [ ] Related documentation updated.
+- [ ] Game support status matches the actual implementation.
 
 ---
 
-## 24. Prinsip Development
+## 24. Development Principles
 
-Urutan prioritas ketika membuat perubahan:
+Priority order when making changes:
 
 1. **Correctness**
 2. **Read-only safety**
@@ -626,9 +645,9 @@ Urutan prioritas ketika membuat perubahan:
 5. **Performance**
 6. **User experience**
 
-Untuk save parsing, correctness lebih penting daripada kecepatan implementasi.
+For save parsing, correctness matters more than implementation speed.
 
-Lebih baik sebuah field belum tersedia daripada menampilkan angka yang tidak terverifikasi.
+A field not being available yet is better than displaying an unverified number.
 
 ---
 
