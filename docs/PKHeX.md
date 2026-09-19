@@ -754,7 +754,7 @@ The project intentionally keeps the PKHeX source outside the public repository.
 Expected local structure:
 
 ```text
-bridge/
+third_party/
 └── PKHeX/
     └── PKHeX.Core/
 ```
@@ -762,7 +762,7 @@ bridge/
 The repository ignores:
 
 ```text
-bridge/PKHeX/
+third_party/PKHeX/
 ```
 
 This means a new developer must obtain PKHeX separately before building the save readers.

@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
-- CI workflow (GitHub Actions): builds the solution and runs the xUnit suite on every push to `main` and every pull request, checking out the pinned PKHeX revision into `bridge/PKHeX/`.
+- CI workflow (GitHub Actions): builds the solution and runs the xUnit suite on every push to `main` and every pull request, checking out the pinned PKHeX revision into `third_party/PKHeX/`.
 - Packaging documentation for distributable single-file Windows builds.
 
 ## [0.2.0] - 2026-09-20

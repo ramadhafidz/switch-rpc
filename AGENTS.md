@@ -175,11 +175,11 @@ PKHeX is a third-party dependency used through a local source checkout.
 Expected local structure:
 
 ```text
-bridge/
+third_party/
 └── PKHeX/          # untracked local checkout
 ```
 
-`SwitchRpc.Games.Pokemon` references `bridge/PKHeX/PKHeX.Core/PKHeX.Core.csproj` through a ProjectReference. The checkout is intentionally ignored by Git.
+`SwitchRpc.Games.Pokemon` references `third_party/PKHeX/PKHeX.Core/PKHeX.Core.csproj` through a ProjectReference. The checkout is intentionally ignored by Git.
 
 The checkout must match the pinned upstream revision (`kwsch/PKHeX` @ `8ad201e80244f630ab5a46922ab72fb79c5ad4f4`) — CI checks out the same revision automatically. Clone command: `docs/DEVELOPMENT.md`, section "PKHeX Local Setup".
 
@@ -505,7 +505,7 @@ switch-rpc/
 ├── tests/
 │   └── SwitchRpc.Tests/
 ├── assets/
-├── bridge/
+├── third_party/
 │   └── PKHeX/            # untracked local checkout
 └── docs/
 ```
@@ -523,7 +523,7 @@ Never commit:
 ```text
 bin/
 obj/
-bridge/PKHeX/
+third_party/PKHeX/
 .env
 config.local.json
 *.sav

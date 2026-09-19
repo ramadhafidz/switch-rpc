@@ -67,25 +67,25 @@ The PKHeX source is used as a local dependency and is referenced directly by the
 Expected structure:
 
 ```text
-bridge/
+third_party/
 └── PKHeX/
     └── PKHeX.Core/
 ```
 
 PKHeX **is not stored as part of the main repository** and must remain ignored by Git.
 
-Place the PKHeX source in `bridge/PKHeX/` so the following ProjectReference resolves:
+Place the PKHeX source in `third_party/PKHeX/` so the following ProjectReference resolves:
 
 ```text
 src/SwitchRpc.Games.Pokemon/SwitchRpc.Games.Pokemon.csproj
-  → ..\..\bridge\PKHeX\PKHeX.Core\PKHeX.Core.csproj
+  → ..\..\third_party\PKHeX\PKHeX.Core\PKHeX.Core.csproj
 ```
 
 Clone PKHeX at the pinned revision — CI uses the same revision:
 
 ```powershell
-git clone https://github.com/kwsch/PKHeX.git bridge/PKHeX
-git -C bridge/PKHeX checkout 8ad201e80244f630ab5a46922ab72fb79c5ad4f4
+git clone https://github.com/kwsch/PKHeX.git third_party/PKHeX
+git -C third_party/PKHeX checkout 8ad201e80244f630ab5a46922ab72fb79c5ad4f4
 ```
 
 ---
@@ -251,7 +251,7 @@ Check whether PKHeX already provides a matching property, save block, accessor, 
 
 ### Step 2 — Verify the source
 
-Make sure the API exists in the PKHeX version in use (`bridge/PKHeX/`).
+Make sure the API exists in the PKHeX version in use (`third_party/PKHeX/`).
 
 ### Step 3 — Add it to the reader
 
@@ -482,7 +482,7 @@ Do not commit:
 - `bin/`, `obj/`;
 - save files;
 - emulator data;
-- `bridge/PKHeX/`;
+- `third_party/PKHeX/`;
 - secrets;
 - local configuration;
 - caches.

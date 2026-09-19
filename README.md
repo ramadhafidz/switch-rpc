@@ -131,7 +131,7 @@ switch-rpc/
 │
 ├── assets/
 │
-├── bridge/
+├── third_party/
 │   └── PKHeX/                     # Local PKHeX checkout, ignored by Git
 │
 └── docs/
@@ -177,7 +177,7 @@ Expected local structure:
 
 ``` text
 switch-rpc/
-└── bridge/
+└── third_party/
     └── PKHeX/
         └── PKHeX.Core/
 ```
@@ -185,10 +185,10 @@ switch-rpc/
 Obtain PKHeX separately and place its source at:
 
 ``` text
-bridge/PKHeX/
+third_party/PKHeX/
 ```
 
-Do not commit `bridge/PKHeX/`.
+Do not commit `third_party/PKHeX/`.
 
 ### 3. Build the solution
 

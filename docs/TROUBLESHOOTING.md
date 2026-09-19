@@ -65,7 +65,7 @@ dotnet build SwitchRpc.slnx
 
 ### Common build failures
 
-- **PKHeX.Core project not found** — the local PKHeX checkout is missing at `bridge/PKHeX/`. See `docs/DEVELOPMENT.md` for the expected layout.
+- **PKHeX.Core project not found** — the local PKHeX checkout is missing at `third_party/PKHeX/`. See `docs/DEVELOPMENT.md` for the expected layout.
 - **File locks (`MSB3021`/`MSB3027`)** — a previous application instance is still running and holding its DLLs. Stop it before rebuilding.
 - **NuGet restore failure** — inspect configured package sources; use `--ignore-failed-sources` only when appropriate.
 
@@ -223,7 +223,7 @@ Do not assume the parser is correct just because it returns a number.
 For any suspicious field:
 
 1. identify the PKHeX API used;
-2. inspect the relevant PKHeX source (`bridge/PKHeX/`);
+2. inspect the relevant PKHeX source (`third_party/PKHeX/`);
 3. verify the save format;
 4. compare against known in-game data;
 5. test with another valid save if available;
@@ -509,7 +509,7 @@ Expected ignored development files include:
 ```text
 bin/
 obj/
-bridge/PKHeX/
+third_party/PKHeX/
 ```
 
 Save files and emulator data must not be committed.

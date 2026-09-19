@@ -22,7 +22,7 @@ jobs:
         with:
           repository: kwsch/PKHeX
           ref: 8ad201e80244f630ab5a46922ab72fb79c5ad4f4
-          path: bridge/PKHeX
+          path: third_party/PKHeX
 
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4

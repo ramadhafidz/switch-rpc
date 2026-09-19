@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\..\bridge\PKHeX\PKHeX.Core\PKHeX.Core.csproj" />
+    <ProjectReference Include="..\..\third_party\PKHeX\PKHeX.Core\PKHeX.Core.csproj" />
     <ProjectReference Include="..\SwitchRpc.Core\SwitchRpc.Core.csproj" />
   </ItemGroup>
 

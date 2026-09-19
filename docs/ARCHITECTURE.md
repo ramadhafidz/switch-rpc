@@ -308,7 +308,7 @@ The facade should not:
 
 ## 5. PKHeX.Core
 
-PKHeX.Core provides the save-format implementations used by the readers. It is consumed as a local source checkout under `bridge/PKHeX/` (untracked) through a `ProjectReference`.
+PKHeX.Core provides the save-format implementations used by the readers. It is consumed as a local source checkout under `third_party/PKHeX/` (untracked) through a `ProjectReference`.
 
 Currently supported save types:
 

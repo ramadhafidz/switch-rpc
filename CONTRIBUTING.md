@@ -59,7 +59,7 @@ Before you open your PR (pull request) make sure that:
 - [ ] No save files or personal data were committed.
 - [ ] No guessed save offsets were introduced.
 - [ ] Save parsing remains strictly **read-only**.
-- [ ] `bridge/PKHeX/` remains untracked/ignored.
+- [ ] `third_party/PKHeX/` remains untracked/ignored.
 
 ---
 
@@ -99,16 +99,16 @@ The PKHeX source is intentionally kept outside the public repository. See [docs/
 The local PKHeX checkout is located at:
 
 ```text
-bridge/PKHeX/
+third_party/PKHeX/
 ```
 
 It is referenced by `SwitchRpc.Games.Pokemon` through a ProjectReference:
 
 ```text
-bridge/PKHeX/PKHeX.Core/PKHeX.Core.csproj
+third_party/PKHeX/PKHeX.Core/PKHeX.Core.csproj
 ```
 
-Do not commit the local `bridge/PKHeX/` source tree.
+Do not commit the local `third_party/PKHeX/` source tree.
 
 ## Project Structure
 
@@ -125,7 +125,7 @@ switch-rpc/
 │   └── SwitchRpc.Games.Pokemon/  # PKHeX save readers
 ├── tests/
 │   └── SwitchRpc.Tests/          # xUnit tests
-├── bridge/
+├── third_party/
 │   └── PKHeX/                    # Local only, ignored by Git
 └── docs/
 ```
@@ -363,7 +363,7 @@ Before submitting:
 - [ ] Save parsing remains read-only.
 - [ ] Discord RPC behavior was checked when relevant.
 - [ ] Documentation was updated when needed.
-- [ ] `bridge/PKHeX/` remains untracked/ignored.
+- [ ] `third_party/PKHeX/` remains untracked/ignored.
 - [ ] The change is focused and clearly described.
 
 ## Reporting Bugs
