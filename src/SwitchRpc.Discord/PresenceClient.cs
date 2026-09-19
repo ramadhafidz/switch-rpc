@@ -4,35 +4,57 @@ namespace SwitchRpc.Discord;
 
 /// <summary>
 /// Thin wrapper around the DiscordRPC library so no other project touches
-/// Discord types directly.
+/// Discord types directly. Connection state is tracked through the
+/// client's lifecycle events, so a disconnect that happens mid-run makes
+/// the next update attempt reconnect instead of silently doing nothing.
+/// The session start timestamp is preserved across reconnections so the
+/// Discord timer stays continuous.
 /// </summary>
 public sealed class PresenceClient : IDisposable
 {
 	private readonly DiscordRpcClient _client;
 	private Timestamps? _sessionStart;
-	private bool _initialized;
+	private volatile bool _connected;
 
 	public PresenceClient(string clientId)
 	{
 		_client = new DiscordRpcClient(clientId);
+
+		_client.OnReady += (_, _) => _connected = true;
+		_client.OnClose += (_, _) => _connected = false;
+		_client.OnConnectionFailed += (_, _) => _connected = false;
+		_client.OnError += (_, _) => _connected = false;
 	}
+
+	public bool IsConnected => _connected;
 
 	public bool Connect()
 	{
-		if (_initialized)
+		if (_connected)
 			return true;
 
-		_initialized = _client.Initialize();
+		try
+		{
+			if (_client.Initialize())
+			{
+				_connected = true;
+				_sessionStart ??= Timestamps.Now;
 
-		if (_initialized)
-			_sessionStart = Timestamps.Now;
-		else
-			_sessionStart = null;
+				return true;
+			}
+		}
+		catch (Exception error)
+		{
+			// Transient IPC failures are expected whenever Discord is not
+			// running; the caller logs the outcome and retries later.
+			Console.WriteLine($"Discord connect error: {error.Message}");
+		}
 
-		return _initialized;
+		_connected = false;
+		_sessionStart = null;
+
+		return false;
 	}
-
-	public bool IsConnected => _initialized;
 
 	public bool Update(
 		string details,
@@ -41,34 +63,54 @@ public sealed class PresenceClient : IDisposable
 		string largeText
 	)
 	{
-		if (!_initialized)
+		if (!_connected)
 			return false;
 
-		_client.SetPresence(new RichPresence
+		try
 		{
-			Details = details,
-			State = state,
-			Assets = new Assets
+			_client.SetPresence(new RichPresence
 			{
-				LargeImageKey = largeImage,
-				LargeImageText = largeText
-			},
-			Timestamps = _sessionStart
-		});
+				Details = details,
+				State = state,
+				Assets = new Assets
+				{
+					LargeImageKey = largeImage,
+					LargeImageText = largeText
+				},
+				Timestamps = _sessionStart
+			});
 
-		return true;
+			return true;
+		}
+		catch (Exception error)
+		{
+			Console.WriteLine($"RPC update failed: {error.Message}");
+
+			_connected = false;
+
+			return false;
+		}
 	}
 
 	public void Clear()
 	{
-		if (_initialized)
+		if (!_connected)
+			return;
+
+		try
+		{
 			_client.ClearPresence();
+		}
+		catch (Exception error)
+		{
+			Console.WriteLine($"RPC clear failed: {error.Message}");
+		}
 	}
 
 	public void Dispose()
 	{
 		_client.Dispose();
-		_initialized = false;
+		_connected = false;
 		_sessionStart = null;
 	}
 }

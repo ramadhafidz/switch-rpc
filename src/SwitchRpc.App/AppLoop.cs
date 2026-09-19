@@ -28,6 +28,7 @@ public sealed class AppLoop
 	private IReadOnlyList<string> _pokedexPages = [];
 	private int _currentPage;
 	private (string, string, string, string, string)? _previousPresence;
+	private bool? _previousEdenRunning;
 	private bool _cancelRequested;
 
 	public AppLoop(AppConfig config)
@@ -64,7 +65,14 @@ public sealed class AppLoop
 			{
 				var now = stopwatch.Elapsed;
 
-				var game = _detector.DetectGame();
+				var (edenRunning, game) = _detector.Poll();
+
+				if (edenRunning != _previousEdenRunning)
+				{
+					Console.WriteLine(edenRunning ? "Eden: running" : "Eden: not running");
+
+					_previousEdenRunning = edenRunning;
+				}
 
 				if (game is null)
 				{
@@ -190,6 +198,8 @@ public sealed class AppLoop
 
 			if (!_rpc.Connect())
 			{
+				Console.WriteLine("Failed to connect to Discord.");
+
 				SleepPoll();
 				return;
 			}

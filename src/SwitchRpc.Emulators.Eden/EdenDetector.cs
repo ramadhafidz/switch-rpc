@@ -22,23 +22,34 @@ public sealed class EdenDetector
 	}
 
 	/// <summary>
-	/// Matches visible Eden window titles against the configured game
-	/// display names and returns the running game, if any.
+	/// Performs a single process scan and reports whether Eden is running
+	/// together with the detected game, if any. The loop uses this to log
+	/// process transitions without scanning twice per tick.
 	/// </summary>
-	public GameDefinition? DetectGame()
+	public (bool Running, GameDefinition? Game) Poll()
 	{
 		using var process = FindProcess();
 
 		if (process is null)
-			return null;
+			return (false, null);
 
+		return (true, MatchGame(CollectWindowTitles(process.Id)));
+	}
+
+	public GameDefinition? DetectGame()
+	{
+		return Poll().Game;
+	}
+
+	private List<string> CollectWindowTitles(int processId)
+	{
 		var titles = new List<string>();
 
 		EnumWindows((hWnd, _) =>
 		{
-			GetWindowThreadProcessId(hWnd, out var processId);
+			GetWindowThreadProcessId(hWnd, out var windowProcessId);
 
-			if (processId != process.Id || !IsWindowVisible(hWnd))
+			if (windowProcessId != processId || !IsWindowVisible(hWnd))
 				return true;
 
 			var text = new StringBuilder(512);
@@ -49,6 +60,11 @@ public sealed class EdenDetector
 			return true;
 		}, IntPtr.Zero);
 
+		return titles;
+	}
+
+	private GameDefinition? MatchGame(List<string> titles)
+	{
 		foreach (var title in titles)
 		{
 			foreach (var game in _games)
