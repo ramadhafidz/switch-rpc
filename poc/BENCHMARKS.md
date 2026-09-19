@@ -72,18 +72,48 @@ Python startup and full save-read path:
 dotnet run --project poc/SwitchRpc.Poc --no-build -- --diagnose
 ```
 
-## Live-loop metrics (require Eden + Discord running)
+## Idle CPU (measured live, 60 s samples)
+
+2026-09-20, sampled with `poc/idle-cpu.ps1` (TotalProcessorTime over a
+60 s window, reported as average % of one core; Task Manager-style
+percentages look smaller because they divide across all cores).
+
+| Scenario | Python baseline | .NET 10 POC |
+|---|---|---|
+| Eden closed (poll-only idle) | 0.91 % | 0.36 % |
+| Eden running, Scarlet in-game | 1.09 % | 0.86 % |
+
+![POC idle, Eden closed](benchmark/run1-poc-eden-off.png)
+
+![Python idle, Eden closed](benchmark/run2-python-eden-off.png)
+
+![POC with Eden running](benchmark/run3-poc-eden-on.png)
+
+![Python with Eden running](benchmark/run4-python-eden-on.png)
+
+Findings:
+
+- With Eden closed, Python burns 0.91 % of a core doing nothing: the
+  loop enumerates all system processes twice per second through
+  `psutil.process_iter` (`is_running()` and `detect_game()` each run a
+  full scan). This quantifies the "optimize the main application loop
+  while Eden is not running" item in TODO.md — worth fixing in the
+  Python baseline regardless of the migration decision.
+- The POC idles at 0.36 % and spends its additional CPU on real work
+  when Eden runs: window enumeration, save parsing every 15 s, and RPC
+  updates every 5 s.
+- The Python figures exclude the CPU of the dotnet bridge child process
+  spawned on every save refresh; the POC has no child process, so its
+  total system footprint is exactly what the table shows.
+
+## Live-loop behaviour
 
 Verified live on 2026-09-20 (Eden + Discord running, Scarlet save):
+
+![POC live loop running Scarlet](benchmark/poc-live-loop-scarlet.png)
 
 - Presence appears within 1 s of game detection; Pokédex pages rotate
   every 5 s (Paldea → Kitakami → Blueberry).
 - Save data refreshes on the configured 15 s interval.
 - Presence clears when the game window closes.
 - Ctrl+C exits cleanly and clears presence; no unhandled exceptions.
-
-Still to measure:
-
-- Idle CPU while Eden is closed, and while Eden is running.
-- RPC update latency (ms) under state change.
-- Memory over a long session.
