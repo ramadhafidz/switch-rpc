@@ -9,7 +9,7 @@ namespace SwitchRpc.Poc.Saves;
 /// bridge/PokemonSaveReader (ScarletVioletReader + LocationExtractor);
 /// no save offsets or PKHeX APIs beyond those verified there.
 /// </summary>
-public sealed class SvSaveReader
+public sealed class SvSaveReader : ISaveStateReader
 {
 	private const uint KPlayerCurrentFieldID = 0xF17EB014;
 	private const uint KPlayerCurrentLocationID = 0x19FC5B7B;

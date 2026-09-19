@@ -19,6 +19,14 @@ real Scarlet save. They produce identical normalized results:
 | Pokédex kitakami | 8 seen / 3 caught | 8 seen / 3 caught |
 | Pokédex blueberry | 0 seen / 0 caught | 0 seen / 0 caught |
 
+The Legends: Arceus save cross-validates identically as well:
+
+| Field | Python baseline | .NET POC |
+|---|---|---|
+| game_id | `pokemon_legends_arceus` | `pokemon_legends_arceus` |
+| playtime_seconds | 24634 | 24634 |
+| Pokédex hisui | 8 seen / 8 caught / 242 total | 8 seen / 8 caught / 242 total |
+
 ## Measured results
 
 2026-09-20, Windows 11, Debug builds, single runs.
@@ -28,6 +36,7 @@ real Scarlet save. They produce identical normalized results:
 | Import / startup | 478 ms | not yet measured |
 | Working set after load | 29.3 MiB | 25.3 MiB |
 | Save refresh path (locate → read → state) | 572 ms | ~197 ms |
+| Save refresh path, PLA | 463 ms | ~119 ms |
 | Threads | not yet measured | 8 |
 
 Caveats:

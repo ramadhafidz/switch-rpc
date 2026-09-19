@@ -17,7 +17,11 @@ public sealed class AppLoop
 
 	private readonly EdenDetector _detector = new();
 	private readonly EdenSaveLocator _locator = new();
-	private readonly SvSaveReader _reader = new();
+	private readonly ISaveStateReader[] _readers =
+	[
+		new SvSaveReader(),
+		new PlaSaveReader(),
+	];
 	private readonly PresenceClient _rpc;
 
 	private readonly TimeSpan _saveRefreshInterval;
@@ -155,7 +159,9 @@ public sealed class AppLoop
 			return null;
 		}
 
-		if (!_reader.CanRead(save))
+		var reader = _readers.FirstOrDefault(x => x.CanRead(save));
+
+		if (reader is null)
 		{
 			Console.WriteLine(
 				$"Save format {save.GetType().Name} is not implemented in the POC;"
@@ -165,7 +171,7 @@ public sealed class AppLoop
 			return new GameState(game.Id, null, null, null, new Dictionary<string, DexStats>());
 		}
 
-		return _reader.Read(save, game.Id);
+		return reader.Read(save, game.Id);
 	}
 
 	private void UpdatePresence(GameDefinition game, IReadOnlyList<string> pages)

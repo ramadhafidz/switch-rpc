@@ -64,7 +64,7 @@ public static class Diagnose
 	private static void PrintSaveMetrics()
 	{
 		var locator = new EdenSaveLocator();
-		var reader = new SvSaveReader();
+		ISaveStateReader[] readers = [new SvSaveReader(), new PlaSaveReader()];
 
 		foreach (var definition in GameCatalog.Games)
 		{
@@ -95,7 +95,9 @@ public static class Diagnose
 				+ $" in {stopwatch.Elapsed.TotalMilliseconds:F1} ms"
 			);
 
-			if (!reader.CanRead(save))
+			var reader = readers.FirstOrDefault(x => x.CanRead(save));
+
+			if (reader is null)
 			{
 				Console.WriteLine("  Save reading: not implemented in the POC yet.");
 				continue;
