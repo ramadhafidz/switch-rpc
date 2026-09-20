@@ -104,8 +104,11 @@ dependencies, only `SwitchRpc.Games.Pokemon` touches PKHeX, and only
 `SwitchRpc.Discord` touches the Discord library.
 
 This flow is the first implementation of a broader adapter-based
-architecture. The long-term target — emulator adapters, generic game
-definitions, and pluggable save readers — is described in
+architecture: the emulator seam already exists as
+`IEmulatorAdapter` (implemented by `EdenAdapter`), with save readers
+and the presence transport behind `ISaveReader` and `IPresenceClient`
+contracts. The long-term target — generic game definitions and
+pluggable save readers — is described in
 [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## 📁 Project Structure
@@ -121,9 +124,9 @@ switch-rpc/
 │
 ├── src/                           # .NET 10 implementation
 │   ├── SwitchRpc.App              # console host, monitoring loop
-│   ├── SwitchRpc.Core             # GameState, game definitions
+│   ├── SwitchRpc.Core             # GameState, game definitions, contracts
 │   ├── SwitchRpc.Discord          # Discord Rich Presence wrapper
-│   ├── SwitchRpc.Emulators.Eden   # Eden detection + save location
+│   ├── SwitchRpc.Emulators.Eden   # Eden adapter (detection + save location)
 │   └── SwitchRpc.Games.Pokemon    # PKHeX save readers
 │
 ├── tests/                         # .NET tests (xUnit)

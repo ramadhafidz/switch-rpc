@@ -123,23 +123,38 @@ Follow-up work tracked in `TODO.md`: CI checks, single-file packaging,
 and broader real-save regression coverage (Violet, Legends: Z-A). An
 optional `v0.2.0-dotnet-core` tag follows live validation on `main`.
 
-### Phase 3 — Universal Emulator Architecture ⏳
+### Phase 3 — Universal Emulator Architecture 🔄
 
 Introduce an emulator adapter abstraction covering process and window
 detection, running-game identification, installation metadata, and
 save locations. Implemented first as `EdenAdapter`, then proven with at
 least one additional emulator before broad expansion.
 
-Known groundwork from the Phase 2 end-state (the host loop currently
-fuses detection → save location → save reading → dex rotation →
-presence):
+**Done so far (adapter seam cut, on the working tree):**
 
-- The adapter seam is cut in `AppLoop`, which today instantiates
-  `EdenDetector`, `EdenSaveLocator`, and `PokemonSaveReader` directly.
-- `AppLoop` has no tests; making the host loop testable is an
-  explicit Phase 3 goal.
-- `config.json`/`GameDefinition` carries no game → emulator
-  association yet — required before a second emulator can coexist.
+- Cross-project contracts live in `SwitchRpc.Core`:
+  `IEmulatorAdapter` (`Poll` + `LocateSave`, with `EmulatorState`),
+  `ISaveReader` (`SaveReadResult`), and `IPresenceClient`.
+- `EdenDetector` became `EdenAdapter`, now implementing
+  `IEmulatorAdapter` and owning save location as well; the old
+  `EdenDetector.cs` is gone.
+- `GameDefinition` carries an `Emulator` name, and `config.json`
+  associates every game with its adapter; unmatched games are skipped
+  with a startup warning.
+- `AppLoop` is fully injected (`IEmulatorAdapter[]`, `ISaveReader`,
+  `IPresenceClient`) and polls every adapter once per tick; `Tick` is
+  public and covered by `tests/SwitchRpc.Tests/AppLoopTests.cs`.
+- `Program.cs` is now a composition root that builds one adapter per
+  configured emulator.
+
+**Remaining before Phase 3 is complete:**
+
+- Prove the abstraction with a second emulator — the real test of the
+  contract (installation metadata, per-emulator quirks, save layouts).
+- The host loop still fuses save reading, Pokédex rotation, and
+  presence behind a Pokémon-shaped path; that split belongs to Phase 5.
+- The identity-only fallback still renders "Pokédex: —" rather than
+  emulator/session information (Phase 7).
 
 ### Phase 4 — Universal Game Architecture ⏳
 

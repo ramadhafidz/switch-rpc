@@ -5,40 +5,51 @@ using SwitchRpc.Core;
 
 namespace SwitchRpc.Emulators.Eden;
 
-public sealed class EdenDetector
+/// <summary>
+/// Eden emulator integration: process and window detection, running-game
+/// identification, and save location through EdenSaveLocator.
+/// </summary>
+public sealed class EdenAdapter : IEmulatorAdapter
 {
 	private const string ProcessName = "eden";
 
 	private readonly IReadOnlyList<GameDefinition> _games;
+	private readonly EdenSaveLocator _locator;
 
-	public EdenDetector(IReadOnlyList<GameDefinition> games)
+	public EdenAdapter(
+		IReadOnlyList<GameDefinition> games,
+		string? saveRoot = null
+	)
 	{
 		_games = games;
+		_locator = saveRoot is null
+			? new EdenSaveLocator()
+			: new EdenSaveLocator(saveRoot);
 	}
 
-	public bool IsRunning()
-	{
-		return FindProcess() is not null;
-	}
+	public string Name => "eden";
 
 	/// <summary>
 	/// Performs a single process scan and reports whether Eden is running
 	/// together with the detected game, if any. The loop uses this to log
 	/// process transitions without scanning twice per tick.
 	/// </summary>
-	public (bool Running, GameDefinition? Game) Poll()
+	public EmulatorState Poll()
 	{
 		using var process = FindProcess();
 
 		if (process is null)
-			return (false, null);
+			return new EmulatorState(false, null);
 
-		return (true, MatchGame(CollectWindowTitles(process.Id)));
+		return new EmulatorState(
+			true,
+			MatchGame(CollectWindowTitles(process.Id))
+		);
 	}
 
-	public GameDefinition? DetectGame()
+	public string? LocateSave(GameDefinition game)
 	{
-		return Poll().Game;
+		return _locator.Locate(game.TitleId);
 	}
 
 	private List<string> CollectWindowTitles(int processId)

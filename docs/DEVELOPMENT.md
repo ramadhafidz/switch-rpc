@@ -567,7 +567,7 @@ Principles:
 - do not reconnect to Discord continuously;
 - use configured intervals;
 - avoid excessive filesystem scans;
-- one process scan per tick (`EdenDetector.Poll()`).
+- one process scan per tick (`EdenAdapter.Poll()`).
 
 If the save reader takes a long time, do not run it more often than needed to keep the Rich Presence up to date.
 

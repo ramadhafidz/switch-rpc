@@ -36,7 +36,7 @@ Runtime flow:
 ```text
 Eden
   ↓
-SwitchRpc.Emulators.Eden (EdenDetector.Poll — single process scan)
+SwitchRpc.Emulators.Eden (EdenAdapter.Poll — single process scan)
   ↓
 SwitchRpc.Core (GameDefinition, loaded from config.json)
   ↓

@@ -4,6 +4,10 @@
     <PackageReference Include="DiscordRichPresence" Version="1.6.1.70" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\SwitchRpc.Core\SwitchRpc.Core.csproj" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\SwitchRpc.App\SwitchRpc.App.csproj" />
     <ProjectReference Include="..\..\src\SwitchRpc.Core\SwitchRpc.Core.csproj" />
     <ProjectReference Include="..\..\src\SwitchRpc.Emulators.Eden\SwitchRpc.Emulators.Eden.csproj" />
     <ProjectReference Include="..\..\src\SwitchRpc.Games.Pokemon\SwitchRpc.Games.Pokemon.csproj" />

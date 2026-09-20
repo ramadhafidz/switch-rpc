@@ -20,7 +20,7 @@ config:
   layout: elk
 ---
 flowchart TD
-	A[Eden Emulator] --> B[EdenDetector]
+	A[Eden Emulator] --> B[EdenAdapter]
 	B --> C[config.json Game Definitions]
 	C --> D[EdenSaveLocator]
 	D --> E[PokemonSaveReader Facade]
@@ -39,7 +39,7 @@ flowchart TD
 | Component | Responsibility |
 |---|---|
 | Eden | Runs the Pokémon game |
-| EdenDetector | Detects Eden and identifies the active game from the window title |
+| EdenAdapter | Detects Eden and identifies the active game from the window title |
 | Game Definitions | Provide configured game metadata (`config.json`) |
 | EdenSaveLocator | Locates the local save file for a game |
 | PokemonSaveReader | Loads saves through PKHeX.Core and dispatches to game-specific readers |
@@ -56,10 +56,10 @@ The solution file is `SwitchRpc.slnx` (the .NET 10 solution format). All applica
 
 | Project | Responsibility | References |
 |---|---|---|
-| `SwitchRpc.Core` | Normalized `GameState`, `GameDefinition`, presence formatting | nothing |
+| `SwitchRpc.Core` | Normalized `GameState`, `GameDefinition`, presence formatting, and the cross-project contracts (`IEmulatorAdapter`, `ISaveReader`, `IPresenceClient`) | nothing |
 | `SwitchRpc.Games.Pokemon` | PKHeX-based save readers behind a `PokemonSaveReader` facade | PKHeX.Core, Core |
 | `SwitchRpc.Emulators.Eden` | Eden process/window detection, save location | Core |
-| `SwitchRpc.Discord` | Discord Rich Presence wrapper | DiscordRichPresence |
+| `SwitchRpc.Discord` | Discord Rich Presence wrapper | DiscordRichPresence, Core |
 | `SwitchRpc.App` | Console host, monitoring loop, configuration, diagnostics | all of the above |
 
 ```mermaid
@@ -83,9 +83,10 @@ flowchart TB
 Rules enforced by the project split:
 
 - `SwitchRpc.Core` references nothing — PKHeX, Discord, and Eden types cannot leak into the normalized state.
+- The cross-project contracts (`IEmulatorAdapter`, `ISaveReader`, `IPresenceClient`) live in Core; `SwitchRpc.App` is the composition root that wires the concrete implementations together.
 - Only `SwitchRpc.Games.Pokemon` touches PKHeX.Core, through the `PokemonSaveReader` facade.
 - Only `SwitchRpc.Discord` touches the Discord library.
-- Game definitions come from `config.json` at runtime; display names, regions, title IDs, and artwork are configuration, not code.
+- Game definitions come from `config.json` at runtime; display names, regions, title IDs, emulators, and artwork are configuration, not code.
 
 Tests live in `tests/SwitchRpc.Tests` (xUnit); run them with `dotnet test SwitchRpc.slnx`. Benchmark evidence for the migration from the retired Python baseline is recorded in `docs/BENCHMARKS.md`.
 
@@ -163,7 +164,7 @@ Pokémon Violet          → pokemon_violet
 Pokémon Legends: Z-A    → pokemon_legends_za
 ```
 
-`EdenDetector.Poll` performs a single process scan per tick and logs state transitions (Eden started/stopped, game changed).
+`EdenAdapter.Poll` performs a single process scan per tick and logs state transitions (Eden started/stopped, game changed).
 
 ### Responsibility
 
@@ -190,6 +191,7 @@ Each game definition contains information such as:
 ```text
 Game ID
 Display name
+Emulator
 Region
 Title ID
 Discord artwork
@@ -202,8 +204,9 @@ Example:
 {
 	"pokemon_scarlet": {
 		"name": "Pokémon Scarlet",
+		"emulator": "eden",
 		"region": "Paldea",
-		"title_id": "0100A3D008C00000",
+		"title_id": "0100A3D008C5C000",
 		"large_image": "scarlet",
 		"large_text": "Pokémon Scarlet"
 	}
@@ -452,22 +455,25 @@ stateDiagram-v2
 
 Console host and monitoring loop.
 
-- `Program.cs` — entry point, component wiring, shutdown.
-- `AppLoop.cs` — the monitoring loop: poll Eden, detect game changes, refresh saves, update Discord.
+- `Program.cs` — entry point, composition root (builds the adapters and wires the loop), shutdown.
+- `AppLoop.cs` — the monitoring loop: poll the emulator adapters, detect game changes, refresh saves, update Discord. Collaborators are injected; `Tick` is public for tests.
 - `ConfigLocator.cs` — locates and loads `config.json`.
 - `Diagnose.cs` — `--diagnose` mode: runs the pipeline once and prints metrics.
 
 ### `src/SwitchRpc.Core/`
 
-Dependency-free normalized state.
+Dependency-free normalized state and contracts.
 
 - `GameDefinition.cs` — configured game metadata.
 - `GameState.cs` — the normalized state record and `DexStats`.
 - `PresenceFormatter.cs` — shapes `GameState` into presence strings.
+- `IEmulatorAdapter.cs` — the emulator contract (`Poll`, `LocateSave`) plus `EmulatorState`.
+- `ISaveReader.cs` — the save-reading contract plus `SaveReadResult`.
+- `IPresenceClient.cs` — the Rich Presence transport contract.
 
 ### `src/SwitchRpc.Emulators.Eden/`
 
-- `EdenDetector.cs` — Eden process/window detection and game identification.
+- `EdenAdapter.cs` — Eden process/window detection, game identification, and save location (implements `IEmulatorAdapter`).
 - `EdenSaveLocator.cs` — title ID → save path resolution.
 
 ### `src/SwitchRpc.Games.Pokemon/`
@@ -499,7 +505,7 @@ config:
   layout: elk
 ---
 flowchart TD
-	A["Eden Emulator"] -->|window title| B["EdenDetector"]
+	A["Eden Emulator"] -->|window title| B["EdenAdapter"]
 
 	B -->|game_id| C["config.json / GameDefinition"]
 	C -->|title_id| D["EdenSaveLocator"]

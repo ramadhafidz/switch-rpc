@@ -7,6 +7,7 @@
 	"games": {
 		"pokemon_legends_arceus": {
 			"name": "Pokémon Legends: Arceus",
+			"emulator": "eden",
 			"region": "Hisui",
 			"title_id": "01001F5010DFA000",
 			"large_image": "arceus",
@@ -14,6 +15,7 @@
 		},
 		"pokemon_scarlet": {
 			"name": "Pokémon Scarlet",
+			"emulator": "eden",
 			"region": "Paldea",
 			"title_id": "0100A3D008C5C000",
 			"large_image": "scarlet",
@@ -21,6 +23,7 @@
 		},
 		"pokemon_violet": {
 			"name": "Pokémon Violet",
+			"emulator": "eden",
 			"region": "Paldea",
 			"title_id": "01008F6008C5E000",
 			"large_image": "violet",
@@ -28,6 +31,7 @@
 		},
 		"pokemon_legends_za": {
 			"name": "Pokémon Legends: Z-A",
+			"emulator": "eden",
 			"region": "Kalos",
 			"title_id": "0100F43008C44000",
 			"large_image": "za",

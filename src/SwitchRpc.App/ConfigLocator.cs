@@ -94,17 +94,23 @@ public static class ConfigLocator
 					? title.GetString()
 					: null;
 
+				var emulator = game.Value.TryGetProperty("emulator", out var emulatorElement)
+					? emulatorElement.GetString()
+					: null;
+
 				var imageKey = game.Value.TryGetProperty("large_image", out var image)
 					? image.GetString()
 					: null;
 
 				if (string.IsNullOrWhiteSpace(displayName)
 					|| string.IsNullOrWhiteSpace(titleId)
-					|| string.IsNullOrWhiteSpace(imageKey))
+					|| string.IsNullOrWhiteSpace(imageKey)
+					|| string.IsNullOrWhiteSpace(emulator))
 				{
 					Console.WriteLine(
 						$"config.json: skipping game '{game.Name}' —"
-						+ " 'name', 'title_id' and 'large_image' are required."
+						+ " 'name', 'title_id', 'large_image' and 'emulator'"
+						+ " are required."
 					);
 
 					continue;
@@ -121,6 +127,7 @@ public static class ConfigLocator
 				games.Add(new GameDefinition(
 					game.Name,
 					displayName,
+					emulator,
 					titleId,
 					imageKey,
 					region,

@@ -1,40 +1,48 @@
 using System.Diagnostics;
 using SwitchRpc.Core;
-using SwitchRpc.Discord;
-using SwitchRpc.Emulators.Eden;
-using SwitchRpc.Games.Pokemon;
 
 namespace SwitchRpc.App;
 
 /// <summary>
-/// The live RPC loop. Polls Eden, refreshes save data on an interval,
-/// rotates Pokédex pages, and updates Discord only when displayed state
-/// changes.
+/// The live RPC loop. Polls the configured emulator adapters, refreshes
+/// save data on an interval, rotates Pokédex pages, and updates Discord
+/// only when displayed state changes. All collaborators are injected so
+/// the loop is testable with fakes.
 /// </summary>
 public sealed class AppLoop
 {
 	private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(1);
 
-	private readonly EdenDetector _detector;
-	private readonly EdenSaveLocator _locator = new();
-	private readonly PokemonSaveReader _saveReader = new();
-	private readonly PresenceClient _rpc;
+	private readonly IReadOnlyList<IEmulatorAdapter> _adapters;
+	private readonly ISaveReader _saveReader;
+	private readonly IPresenceClient _rpc;
 
 	private readonly TimeSpan _saveRefreshInterval;
 	private readonly TimeSpan _dexRotationInterval;
+
+	private readonly Dictionary<string, bool> _previousRunning = [];
 
 	private GameDefinition? _currentGame;
 	private GameState? _currentState;
 	private IReadOnlyList<string> _pokedexPages = [];
 	private int _currentPage;
 	private (string, string, string, string, string)? _previousPresence;
-	private bool? _previousEdenRunning;
+
+	private TimeSpan? _lastSaveRefresh;
+	private TimeSpan? _lastRotation;
+
 	private bool _cancelRequested;
 
-	public AppLoop(AppConfig config)
+	public AppLoop(
+		AppConfig config,
+		IReadOnlyList<IEmulatorAdapter> adapters,
+		ISaveReader saveReader,
+		IPresenceClient rpc
+	)
 	{
-		_detector = new EdenDetector(config.Games);
-		_rpc = new PresenceClient(config.ClientId);
+		_adapters = adapters;
+		_saveReader = saveReader;
+		_rpc = rpc;
 		_saveRefreshInterval = config.SaveRefreshInterval;
 		_dexRotationInterval = config.DexRotationInterval;
 	}
@@ -55,8 +63,6 @@ public sealed class AppLoop
 		else
 			Console.WriteLine("Discord not available yet; will retry on update.");
 
-		TimeSpan? lastSaveRefresh = null;
-		TimeSpan? lastRotation = null;
 		var stopwatch = Stopwatch.StartNew();
 
 		try
@@ -65,69 +71,7 @@ public sealed class AppLoop
 			{
 				try
 				{
-					var now = stopwatch.Elapsed;
-
-					var (edenRunning, game) = _detector.Poll();
-
-					if (edenRunning != _previousEdenRunning)
-					{
-						Console.WriteLine(edenRunning ? "Eden: running" : "Eden: not running");
-
-						_previousEdenRunning = edenRunning;
-					}
-
-					if (game is null)
-					{
-						if (_currentGame is not null)
-						{
-							Console.WriteLine("Game: none");
-							ResetPresence();
-						}
-					}
-					else
-					{
-						if (_currentGame is null || game.Id != _currentGame.Id)
-						{
-							Console.WriteLine($"Game detected: {game.DisplayName}");
-
-							_currentGame = game;
-							_currentState = null;
-							_previousPresence = null;
-							_pokedexPages = [];
-							_currentPage = 0;
-							lastSaveRefresh = null;
-							lastRotation = now;
-						}
-
-						if (lastSaveRefresh is null
-							|| now - lastSaveRefresh.Value >= _saveRefreshInterval)
-						{
-							var state = ReadGameState(game);
-
-							if (state is not null)
-							{
-								_currentState = state;
-								_pokedexPages = PresenceFormatter.FormatPokedexPages(state);
-
-								if (_currentPage >= _pokedexPages.Count)
-									_currentPage = 0;
-
-								Console.WriteLine("Save data refreshed.");
-							}
-
-							lastSaveRefresh = now;
-						}
-
-						if (_pokedexPages.Count > 0
-							&& (lastRotation is null
-								|| now - lastRotation.Value >= _dexRotationInterval))
-						{
-							_currentPage = (_currentPage + 1) % _pokedexPages.Count;
-							lastRotation = now;
-						}
-
-						UpdatePresence(_pokedexPages);
-					}
+					Tick(stopwatch.Elapsed);
 				}
 				catch (Exception error)
 				{
@@ -152,9 +96,118 @@ public sealed class AppLoop
 		return 0;
 	}
 
-	private GameState? ReadGameState(GameDefinition game)
+	/// <summary>
+	/// One monitoring cycle: poll the adapters, refresh the save when due,
+	/// rotate the Pokédex page when due, and update presence when the
+	/// displayed state changed. Public so tests can drive it with
+	/// synthetic timestamps.
+	/// </summary>
+	public void Tick(TimeSpan now)
 	{
-		var savePath = _locator.Locate(game.TitleId);
+		var detected = PollAdapters();
+
+		if (detected is null)
+		{
+			if (_currentGame is not null)
+			{
+				Console.WriteLine("Game: none");
+				ResetPresence();
+			}
+
+			return;
+		}
+
+		var (adapter, game) = detected.Value;
+
+		if (_currentGame is null || game.Id != _currentGame.Id)
+		{
+			Console.WriteLine($"Game detected: {game.DisplayName}");
+
+			_currentGame = game;
+			_currentState = null;
+			_previousPresence = null;
+			_pokedexPages = [];
+			_currentPage = 0;
+			_lastSaveRefresh = null;
+			_lastRotation = now;
+		}
+
+		if (_lastSaveRefresh is null
+			|| now - _lastSaveRefresh.Value >= _saveRefreshInterval)
+		{
+			RefreshSave(adapter, game);
+
+			_lastSaveRefresh = now;
+		}
+
+		if (_pokedexPages.Count > 0
+			&& (_lastRotation is null
+				|| now - _lastRotation.Value >= _dexRotationInterval))
+		{
+			_currentPage = (_currentPage + 1) % _pokedexPages.Count;
+			_lastRotation = now;
+		}
+
+		UpdatePresence(_pokedexPages);
+	}
+
+	/// <summary>
+	/// Polls every adapter once, logging running-state transitions. Returns
+	/// the first running adapter with a detected game, or null when no
+	/// adapter reports one.
+	/// </summary>
+	private (IEmulatorAdapter Adapter, GameDefinition Game)? PollAdapters()
+	{
+		IEmulatorAdapter? activeAdapter = null;
+		GameDefinition? game = null;
+
+		foreach (var adapter in _adapters)
+		{
+			var state = adapter.Poll();
+
+			if (_previousRunning.TryGetValue(adapter.Name, out var wasRunning)
+				&& wasRunning != state.Running)
+			{
+				Console.WriteLine(
+					$"{adapter.Name}: {(state.Running ? "running" : "not running")}"
+				);
+			}
+
+			_previousRunning[adapter.Name] = state.Running;
+
+			if (activeAdapter is null
+				&& state.Running
+				&& state.Game is not null)
+			{
+				activeAdapter = adapter;
+				game = state.Game;
+			}
+		}
+
+		return activeAdapter is null || game is null
+			? null
+			: (activeAdapter, game);
+	}
+
+	private void RefreshSave(IEmulatorAdapter adapter, GameDefinition game)
+	{
+		var state = ReadGameState(adapter, game);
+
+		if (state is null)
+			return;
+
+		_currentState = state;
+		_pokedexPages = PresenceFormatter.FormatPokedexPages(state);
+
+		if (_currentPage >= _pokedexPages.Count)
+			_currentPage = 0;
+
+		Console.WriteLine("Save data refreshed.");
+	}
+
+	private GameState? ReadGameState(IEmulatorAdapter adapter, GameDefinition game)
+	{
+		var savePath = adapter.LocateSave(game);
 
 		if (savePath is null)
 		{
@@ -183,7 +236,7 @@ public sealed class AppLoop
 			);
 		}
 
-		Console.WriteLine("PKHeX could not identify the save file.");
+		Console.WriteLine("The save reader could not identify the save file.");
 		return null;
 	}
 

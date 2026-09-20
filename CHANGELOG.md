@@ -8,8 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Emulator adapter architecture (Phase 3, in progress): cross-project contracts in `SwitchRpc.Core` — `IEmulatorAdapter` (`Poll`, `LocateSave`, `EmulatorState`), `ISaveReader` (`SaveReadResult`), and `IPresenceClient`.
+- `Emulator` field on `GameDefinition` and in `config.json`, associating each game with the adapter that hosts it; games with no matching adapter are skipped with a startup warning.
+- xUnit coverage for the host loop (`AppLoopTests`) — game detection, save refresh interval, Pokédex rotation, game-exit clearing, unsupported-format fallback, and per-adapter dispatch — plus `EdenAdapterTests` for save location.
 - CI workflow (GitHub Actions): builds the solution and runs the xUnit suite on every push to `main` and every pull request, checking out the pinned PKHeX revision into `third_party/PKHeX/`.
 - Packaging documentation for distributable single-file Windows builds.
+
+### Changed
+
+- `EdenDetector` is now `EdenAdapter`, implementing `IEmulatorAdapter` and owning save location as well as detection; `AppLoop` takes injected collaborators (`IEmulatorAdapter[]`, `ISaveReader`, `IPresenceClient`) instead of constructing them, and `Program.cs` is a composition root building one adapter per configured emulator.
 
 ## [0.2.0] - 2026-09-20
 

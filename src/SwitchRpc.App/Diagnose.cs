@@ -8,7 +8,7 @@ namespace SwitchRpc.App;
 /// <summary>
 /// One-shot diagnostic run that exercises the whole pipeline without
 /// requiring Eden or Discord to be running, printing the metrics recorded
-/// in poc/BENCHMARKS.md.
+/// in docs/BENCHMARKS.md.
 /// </summary>
 public static class Diagnose
 {
@@ -61,15 +61,15 @@ public static class Diagnose
 
 	private static void PrintGameDetectionMetrics(AppConfig? config)
 	{
-		var detector = new EdenDetector(config?.Games ?? []);
+		var adapter = new EdenAdapter(config?.Games ?? []);
 
 		var stopwatch = Stopwatch.StartNew();
-		var game = detector.DetectGame();
+		var state = adapter.Poll();
 		stopwatch.Stop();
 
-		Console.WriteLine(game is null
+		Console.WriteLine(state.Game is null
 			? "Game detection: Eden not running or no supported game window"
-			: $"Game detection: {game.DisplayName}"
+			: $"Game detection: {state.Game.DisplayName}"
 		);
 
 		Console.WriteLine(
@@ -79,12 +79,14 @@ public static class Diagnose
 
 	private static void PrintSaveMetrics(AppConfig config)
 	{
-		var locator = new EdenSaveLocator();
+		var adapter = new EdenAdapter(config.Games);
 		var reader = new PokemonSaveReader();
 
-		foreach (var definition in config.Games)
+		foreach (var definition in config.Games.Where(
+			game => game.Emulator == adapter.Name
+		))
 		{
-			var savePath = locator.Locate(definition.TitleId);
+			var savePath = adapter.LocateSave(definition);
 
 			if (savePath is null)
 			{

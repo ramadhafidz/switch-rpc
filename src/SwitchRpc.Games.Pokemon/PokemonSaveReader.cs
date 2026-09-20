@@ -3,18 +3,15 @@ using SwitchRpc.Core;
 
 namespace SwitchRpc.Games.Pokemon;
 
-public sealed record SaveReadResult(
-	GameState? State,
-	string? SaveTypeName,
-	bool Supported
-);
-
 /// <summary>
 /// Facade over the Pokémon save readers. Loads a save with PKHeX, picks the
 /// matching reader, and returns a normalized result — callers never touch
 /// PKHeX types directly.
+///
+/// The base interface is fully qualified because PKHeX.Core also declares
+/// an ISaveReader; the Core contract is the one implemented here.
 /// </summary>
-public sealed class PokemonSaveReader
+public sealed class PokemonSaveReader : SwitchRpc.Core.ISaveReader
 {
 	private readonly ISaveStateReader[] _readers =
 	[

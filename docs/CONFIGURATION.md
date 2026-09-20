@@ -30,6 +30,7 @@ The default structure is:
 	"games": {
 		"pokemon_legends_arceus": {
 			"name": "Pokémon Legends: Arceus",
+			"emulator": "eden",
 			"region": "Hisui",
 			"title_id": "01001F5010DFA000",
 			"large_image": "arceus",
@@ -37,6 +38,7 @@ The default structure is:
 		},
 		"pokemon_scarlet": {
 			"name": "Pokémon Scarlet",
+			"emulator": "eden",
 			"region": "Paldea",
 			"title_id": "0100A3D008C5C000",
 			"large_image": "scarlet",
@@ -44,6 +46,7 @@ The default structure is:
 		},
 		"pokemon_violet": {
 			"name": "Pokémon Violet",
+			"emulator": "eden",
 			"region": "Paldea",
 			"title_id": "01008F6008C5E000",
 			"large_image": "violet",
@@ -51,6 +54,7 @@ The default structure is:
 		},
 		"pokemon_legends_za": {
 			"name": "Pokémon Legends: Z-A",
+			"emulator": "eden",
 			"region": "Kalos",
 			"title_id": "0100F43008C44000",
 			"large_image": "za",
@@ -142,6 +146,7 @@ Example:
 {
 	"pokemon_scarlet": {
 		"name": "Pokémon Scarlet",
+		"emulator": "eden",
 		"region": "Paldea",
 		"title_id": "0100A3D008C5C000",
 		"large_image": "scarlet",
@@ -190,6 +195,24 @@ Example:
 ```
 
 This is a presentation value and can be changed without changing the internal game ID.
+
+---
+
+### `emulator`
+
+**Required.** The name of the emulator adapter that hosts this game. The value is matched against `IEmulatorAdapter.Name` in the application code; games whose emulator has no adapter are skipped with a startup warning.
+
+Example:
+
+```json
+"emulator": "eden"
+```
+
+Currently available adapters:
+
+```text
+eden
+```
 
 ---
 
@@ -279,6 +302,7 @@ A new entry can be added like:
 {
 	"pokemon_example": {
 		"name": "Pokémon Example",
+		"emulator": "eden",
 		"region": "Example Region",
 		"title_id": "0100000000000000",
 		"large_image": "example",
@@ -287,7 +311,7 @@ A new entry can be added like:
 }
 ```
 
-A configured game is automatically detected through its window title and its save is located through its `title_id`.
+A configured game is automatically detected through its window title and its save is located through its `title_id`, provided its `emulator` matches an available adapter.
 
 However, complete support may also require changes to:
 
@@ -389,6 +413,7 @@ Discord Application ID
 Update interval
 Game display name
 Game region
+Emulator adapter name
 Artwork asset key
 Artwork tooltip
 ```

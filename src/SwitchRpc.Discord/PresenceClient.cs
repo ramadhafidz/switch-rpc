@@ -1,4 +1,5 @@
 using DiscordRPC;
+using SwitchRpc.Core;
 
 namespace SwitchRpc.Discord;
 
@@ -17,7 +18,7 @@ namespace SwitchRpc.Discord;
 /// The session start timestamp is preserved across reconnections so the
 /// Discord timer stays continuous.
 /// </summary>
-public sealed class PresenceClient : IDisposable
+public sealed class PresenceClient : IPresenceClient
 {
 	private readonly DiscordRpcClient _client;
 	private Timestamps? _sessionStart;
